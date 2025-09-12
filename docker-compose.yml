@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  crm:
+    build: .
+    container_name: crm-app
+    ports:
+      - "8080:5000"   # host:container
+    environment:
+      - NODE_ENV=production
+      - MONGO_URI=mongodb+srv://crmapp:Dinesh%406702@cluster2002.45u9g.mongodb.net/crmDB?retryWrites=true&w=majority&appName=Cluster2002
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:6
+    container_name: mongo-db
+    ports:
+      - "27017:27017"   # expose for external tools like MongoDB Compass
+    volumes:
+      - mongo-data:/data/db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    ports:
+      - "8081:8081"   # Web UI available at localhost:8081
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:

@@ -6,7 +6,6 @@ const helmet = require("helmet");
 const http = require("http");
 const { Server } = require("socket.io");
 const twilio = require("twilio");
-const fetch = require("node-fetch"); // Ensure this is installed
 const authRouter = require("./login/Auth"); // Corrected path
 const appointmentsRouter = require("./routes/appointments");
 const userRoutesRouter = require("./routes/userRoutes");
@@ -14,15 +13,25 @@ const User = require("./models/User");
 const bcrypt = require("bcrypt");
 const callsRouter = require('./routes/calls');
 const leadsRouter = require('./routes/leads');
+const { Parser } = require('json2csv'); // For CSV export
+const proxyRouter = require('./routes/proxy');
+const connectDB = require("./db");
+const task = require("./routes/tasks");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:3000', // 👈 Add this line
+      'https://nothing-nine-neon.vercel.app'
+    ],
+    credentials: true
+  }
+  // transports: ['websocket'], // FIX: Avoid xhr poll error
 });
+
 
 // Twilio Config
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -35,13 +44,8 @@ app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/teamdb")
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
-  });
+// ✅ Connect to MongoDB
+connectDB();
 
 // Socket.IO Events
 const activeCalls = {};
@@ -75,11 +79,17 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle user logout
+
+
   socket.on("userLogout", async (data) => {
     console.log('🔔 Received userLogout event:', data);
     try {
       const { userId, username } = data;
+      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        console.error('⚠️ Invalid or missing userId received for socket logout:', userId);
+        return;
+      }
+
       activeSessions.delete(userId);
       
       // Update user status in database
@@ -94,6 +104,9 @@ io.on("connection", (socket) => {
       console.error("Logout tracking error:", error);
     }
   });
+  
+  
+
 
   // Handle user activity (heartbeat)
   socket.on("userActivity", (data) => {
@@ -112,6 +125,22 @@ io.on("connection", (socket) => {
   socket.on("hangup", ({ to }) => {
     io.emit("callEnded", { to });
     delete activeCalls[to];
+  });
+
+  // Real-time BDM location tracking
+  socket.on("bdmLocationUpdate", async ({ userId, lat, lng }) => {
+    try {
+      await User.findByIdAndUpdate(userId, { lat, lng });
+      io.emit("bdmLocationChanged", { userId, lat, lng });
+    } catch (err) {
+      console.error("Failed to update BDM location:", err);
+    }
+  });
+
+  // Handle joining user room for notifications
+  socket.on("joinUserRoom", (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`🔔 User ${userId} joined notification room`);
   });
 
   socket.on("disconnect", () => {
@@ -164,6 +193,12 @@ app.use("/api/auth", authRouter);
 // Appointment Routes
 app.use("/api/appointments", appointmentsRouter);
 app.use("/api/leads", leadsRouter);
+  
+//task routes
+app.use("/api/tasks", (req, res, next) => {
+  req.io = io;
+  next();
+}, task);
 
 // User Routes
 app.use("/api/users", userRoutesRouter);
@@ -174,7 +209,7 @@ app.get("/api/admin-status", async (req, res) => {
     const admin = await User.findOne({ userGroup: "admin" }, "username loginStatus").lean();
     if (!admin) return res.status(404).json({ error: "Admin not found" });
     res.json({ username: admin.username, status: admin.loginStatus });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch admin status" });
   }
 });
@@ -199,6 +234,8 @@ app.post("/api/users/register", async (req, res) => {
       userGroup,
       phone,
       loginStatus,
+      loginTime: null,
+      logoutTime: null,
     });
 
     await user.save();
@@ -217,7 +254,13 @@ app.post("/api/users/register", async (req, res) => {
 app.get("/api/users", async (req, res) => {
   try {
     // Exclude admins and passwordHash, include loginTime and logoutTime
-    const users = await User.find({ userGroup: { $ne: "admin" } }, "-passwordHash").lean();
+    let users = await User.find({ userGroup: { $ne: "admin" } }, "-passwordHash").lean();
+    // Ensure loginTime and logoutTime are always present
+    users = users.map(u => ({
+      ...u,
+      loginTime: typeof u.loginTime === 'undefined' ? null : u.loginTime,
+      logoutTime: typeof u.logoutTime === 'undefined' ? null : u.logoutTime
+    }));
     res.json(users);
   } catch (err) {
     console.error("Fetch users error:", err);
@@ -260,8 +303,8 @@ app.delete("/api/users/:id", async (req, res) => {
     if (!deletedUser) return res.status(404).json({ error: "User not found" });
 
     res.json({ message: "User deleted" });
-  } catch (err) {
-    console.error("Delete user error:", err);
+  } catch {
+    console.error("Delete user error");
     res.status(500).json({ error: "Failed to delete user" });
   }
 });
@@ -308,8 +351,6 @@ app.post('/send-whatsapp', async (req, res) => {
   }
 
   try {
-    const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
-
     const response = await fetch(`https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`, {
       method: 'POST',
       headers: {
@@ -338,34 +379,76 @@ app.post('/send-whatsapp', async (req, res) => {
   }
 });
 
-// Twilio Callback
-app.post("/twilio/status-callback", (req, res) => {
-  const { CallSid, CallStatus, To, From } = req.body;
-  console.log("🔁 Call status:", CallSid, CallStatus);
 
-  io.emit("callStatus", { sid: CallSid, status: CallStatus, to: To, from: From });
-
-  if (["completed", "failed", "busy", "no-answer"].includes(CallStatus)) {
-    delete activeCalls[To];
-    io.emit("callEnded", { to: To });
-  }
-
-  res.sendStatus(200);
-});
 
 // Calls Routes
 app.use('/api/calls', callsRouter);
+app.use('/api', proxyRouter);
+
+// Attendance export endpoint
+app.get('/api/users/attendance', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let users = await User.find({ userGroup: { $ne: "admin" } }, "username loginTime logoutTime").lean();
+    if (month && year) {
+      const m = parseInt(month, 10) - 1; // JS months are 0-based
+      const y = parseInt(year, 10);
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 1);
+      users = users.filter(u => {
+        const login = u.loginTime ? new Date(u.loginTime) : null;
+        const logout = u.logoutTime ? new Date(u.logoutTime) : null;
+        return (login && login >= start && login < end) || (logout && logout >= start && logout < end);
+      });
+    }
+    // Format dates as YYYY-MM-DD HH:mm:ss
+    const formatDateTime = dt => {
+      if (!dt) return '';
+      const d = new Date(dt);
+      const pad = n => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    users = users.map(u => ({
+      username: u.username,
+      loginTime: formatDateTime(u.loginTime),
+      logoutTime: formatDateTime(u.logoutTime)
+    }));
+    const fields = ['username', 'loginTime', 'logoutTime'];
+    const parser = new Parser({ fields });
+    const csv = parser.parse(users);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('attendance.csv');
+    return res.send(csv);
+  } catch {
+    res.status(500).json({ error: "Failed to export attendance" });
+  }
+});
 
 // Global Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error("Unhandled error:", err);
-  res.status(500).json({ error: "Something went wrong" });
+  if (res && typeof res.status === 'function') {
+    res.status(500).json({ error: "Something went wrong" });
+  } else {
+    // fallback for non-standard res
+    res.end && res.end('Internal server error');
+  }
 });
 
-// Start Server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
+
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
 
 app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
+
+app.use(express.static(require('path').join(__dirname, '../frontend/dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(require('path').join(__dirname, '../frontend/dist', 'index.html'));
+});

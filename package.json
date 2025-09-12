@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start:all": "concurrently \"npm start --prefix backend\" \"npm run dev --prefix frontend\"",
-    "deploy": "npm run build --prefix frontend && vercel --prod"
+    "deploy": "npm run build --prefix frontend && vercel --prod",
+    "docker:build": "docker build -t crm-app ."
   },
   "repository": {
     "type": "git",
@@ -28,7 +29,9 @@
   "homepage": "https://dineshmurugan2022.github.io/bnycrm/",
   "dependencies": {
     "bootstrap": "^5.3.0",
+    "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
+    "json2csv": "^6.0.0-alpha.2",
     "jspdf": "^3.0.1",
     "multer": "^2.0.1",
     "patch-package": "^8.0.0",
