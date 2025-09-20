@@ -5,7 +5,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const http = require("http");
 const { Server } = require("socket.io");
-const twilio = require("twilio");
 const authRouter = require("./login/Auth"); // Corrected path
 const appointmentsRouter = require("./routes/appointments");
 const userRoutesRouter = require("./routes/userRoutes");
@@ -17,6 +16,8 @@ const { Parser } = require('json2csv'); // For CSV export
 const proxyRouter = require('./routes/proxy');
 const connectDB = require("./db");
 const task = require("./routes/tasks");
+const modem = require("./services/modem");
+const { setIOInstance } = require("./sockets/io");
 
 const app = express();
 const server = http.createServer(app);
@@ -33,10 +34,7 @@ const io = new Server(server, {
 });
 
 
-// Twilio Config
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = twilio(accountSid, authToken);
+
 
 // Middleware
 app.use(helmet());
@@ -46,6 +44,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ✅ Connect to MongoDB
 connectDB();
+
+// Initialize Socket.IO instance for services
+setIOInstance(io);
 
 // Socket.IO Events
 const activeCalls = {};
@@ -309,39 +310,6 @@ app.delete("/api/users/:id", async (req, res) => {
   }
 });
 
-// Make a call
-app.post('/api/call', async (req, res) => {
-  try {
-    const { to, from } = req.body;
-    
-    const call = await client.calls.create({
-      to,
-      from,
-      url: 'http://your-webhook-url/voice', // You'll need to set up a webhook URL
-      statusCallback: 'http://your-webhook-url/status', // Optional: for call status updates
-      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      statusCallbackMethod: 'POST'
-    });
-
-    res.json({ success: true, callSid: call.sid });
-  } catch (error) {
-    console.error('Call failed:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Hang up a call
-app.post('/api/hangup', async (req, res) => {
-  try {
-    const { callSid } = req.body;
-    await client.calls(callSid).update({ status: 'completed' });
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Hangup failed:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // WhatsApp Message via Meta API
 app.post('/send-whatsapp', async (req, res) => {
   const { phone, message } = req.body;
@@ -384,12 +352,20 @@ app.post('/send-whatsapp', async (req, res) => {
 // Calls Routes
 app.use('/api/calls', callsRouter);
 app.use('/api', proxyRouter);
+// Initialize SIM800 Modem
+modem.connectSIM800(io);
 
-// Attendance export endpoint
-app.get('/api/users/attendance', async (req, res) => {
+
+
+// Import auth middleware
+const auth = require('./middleware/auth');
+
+// Attendance data endpoint (for viewing)
+app.get('/api/users/attendance', auth, async (req, res) => {
   try {
     const { month, year } = req.query;
     let users = await User.find({ userGroup: { $ne: "admin" } }, "username loginTime logoutTime").lean();
+    
     if (month && year) {
       const m = parseInt(month, 10) - 1; // JS months are 0-based
       const y = parseInt(year, 10);
@@ -401,25 +377,85 @@ app.get('/api/users/attendance', async (req, res) => {
         return (login && login >= start && login < end) || (logout && logout >= start && logout < end);
       });
     }
-    // Format dates as YYYY-MM-DD HH:mm:ss
+    
+    // Format dates for display
     const formatDateTime = dt => {
       if (!dt) return '';
       const d = new Date(dt);
       const pad = n => n.toString().padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     };
-    users = users.map(u => ({
+    
+    const formattedUsers = users.map(u => ({
       username: u.username,
       loginTime: formatDateTime(u.loginTime),
       logoutTime: formatDateTime(u.logoutTime)
     }));
-    const fields = ['username', 'loginTime', 'logoutTime'];
+    
+    res.json(formattedUsers);
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    res.status(500).json({ error: "Failed to fetch attendance" });
+  }
+});
+
+// Attendance download endpoint (for CSV export)
+app.get('/api/users/attendance/download', auth, async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    let users = await User.find({ userGroup: { $ne: "admin" } }, "username loginTime logoutTime").lean();
+    
+    if (month && year) {
+      const m = parseInt(month, 10) - 1; // JS months are 0-based
+      const y = parseInt(year, 10);
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 1);
+      users = users.filter(u => {
+        const login = u.loginTime ? new Date(u.loginTime) : null;
+        const logout = u.logoutTime ? new Date(u.logoutTime) : null;
+        return (login && login >= start && login < end) || (logout && logout >= start && logout < end);
+      });
+    }
+    
+    // Format dates for CSV export
+    const formatDateTime = dt => {
+      if (!dt) return '';
+      const d = new Date(dt);
+      const pad = n => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    
+    const csvData = users.map(u => ({
+      Username: u.username,
+      'Login Time': formatDateTime(u.loginTime),
+      'Logout Time': formatDateTime(u.logoutTime),
+      'Working Hours': (() => {
+        const login = u.loginTime ? new Date(u.loginTime) : null;
+        const logout = u.logoutTime ? new Date(u.logoutTime) : null;
+        if (login && logout) {
+          const hours = Math.abs(logout - login) / 36e5; // Convert milliseconds to hours
+          return hours.toFixed(2);
+        }
+        return 'N/A';
+      })()
+    }));
+    
+    const fields = ['Username', 'Login Time', 'Logout Time', 'Working Hours'];
     const parser = new Parser({ fields });
-    const csv = parser.parse(users);
-    res.header('Content-Type', 'text/csv');
-    res.attachment('attendance.csv');
+    const csv = parser.parse(csvData);
+    
+    // Set proper headers for file download
+    const monthName = month ? new Date(0, parseInt(month) - 1).toLocaleString('default', { month: 'long' }) : 'All';
+    const fileName = `attendance_${monthName}_${year || 'All'}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Pragma', 'no-cache');
+    
     return res.send(csv);
-  } catch {
+  } catch (error) {
+    console.error('Error downloading attendance:', error);
     res.status(500).json({ error: "Failed to export attendance" });
   }
 });
