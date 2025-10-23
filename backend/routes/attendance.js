@@ -1,5 +1,4 @@
 const express = require('express');
-const Attendance = require('../models/Attendance');
 const router = express.Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
@@ -17,33 +16,93 @@ function requireAdminOrLeader(req, res, next) {
 // User login (mark present and set login time)
 router.post('/login', async (req, res) => {
   const { userId } = req.body;
-  const today = new Date();
-  const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let attendance = await Attendance.findOne({ userId, date: dateOnly });
-  if (!attendance) {
-    attendance = new Attendance({ userId, date: dateOnly });
+  
+  try {
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Update login time in user's attendance records
+    const today = new Date();
+    const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Find existing attendance record for today or create new one
+    let attendanceRecord = user.attendanceRecords.find(record => 
+      new Date(record.date).toDateString() === dateOnly.toDateString()
+    );
+    
+    if (!attendanceRecord) {
+      // Create new attendance record for today
+      attendanceRecord = {
+        date: dateOnly,
+        loginTime: today,
+        logoutTime: null,
+        totalHours: 0
+      };
+      user.attendanceRecords.push(attendanceRecord);
+    } else {
+      // Preserve the original login time, only update if it doesn't exist
+      // This ensures the first login time is not changed
+      if (!attendanceRecord.loginTime) {
+        attendanceRecord.loginTime = today;
+      }
+      attendanceRecord.logoutTime = null;
+      attendanceRecord.totalHours = 0;
+    }
+    
+    await user.save();
+    
+    res.json({ success: true, attendance: attendanceRecord });
+  } catch (error) {
+    console.error('Error updating attendance login:', error);
+    res.status(500).json({ success: false, message: 'Failed to update attendance' });
   }
-  attendance.loginTime = today;
-  attendance.status = 'present';
-  await attendance.save();
-  res.json({ success: true, attendance });
 });
 
 // User logout (set logout time)
 router.post('/logout', async (req, res) => {
   const { userId } = req.body;
-  const today = new Date();
-  const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  let attendance = await Attendance.findOne({ userId, date: dateOnly });
-  if (!attendance) {
-    return res.status(404).json({ success: false, message: 'Attendance not found' });
+  
+  try {
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    
+    // Update logout time in user's attendance records
+    const today = new Date();
+    const dateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Find existing attendance record for today
+    let attendanceRecord = user.attendanceRecords.find(record => 
+      new Date(record.date).toDateString() === dateOnly.toDateString()
+    );
+    
+    if (!attendanceRecord) {
+      return res.status(404).json({ success: false, message: 'Attendance record not found' });
+    }
+    
+    // Update logout time and calculate total hours
+    attendanceRecord.logoutTime = today;
+    if (attendanceRecord.loginTime) {
+      const diffMs = today - attendanceRecord.loginTime;
+      const diffHours = diffMs / (1000 * 60 * 60);
+      attendanceRecord.totalHours = parseFloat(diffHours.toFixed(2));
+    }
+    
+    await user.save();
+    
+    res.json({ success: true, attendance: attendanceRecord });
+  } catch (error) {
+    console.error('Error updating attendance logout:', error);
+    res.status(500).json({ success: false, message: 'Failed to update attendance' });
   }
-  attendance.logoutTime = today;
-  await attendance.save();
-  res.json({ success: true, attendance });
 });
 
-// GET /api/users/attendance/:year/:month - Get attendance data for a specific month
+// GET /api/attendance/:year/:month - Get attendance data for a specific month
 router.get('/:year/:month', auth, requireAdminOrLeader, async (req, res) => {
   try {
     const { year, month } = req.params;
@@ -60,14 +119,12 @@ router.get('/:year/:month', auth, requireAdminOrLeader, async (req, res) => {
     const startDate = new Date(yearNum, monthNum - 1, 1);
     const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
     
-    // Find users with attendance records in the specified month
-    const users = await User.find({
-      'attendanceRecords.date': { $gte: startDate, $lte: endDate }
-    }).select('username userGroup attendanceRecords');
+    // Get all users
+    const allUsers = await User.find().select('username userGroup attendanceRecords');
     
     // Format the data
     const attendanceData = [];
-    users.forEach(user => {
+    allUsers.forEach(user => {
       user.attendanceRecords.forEach(record => {
         const recordDate = new Date(record.date);
         if (recordDate >= startDate && recordDate <= endDate) {
@@ -121,16 +178,6 @@ router.get('/:year/:month/download', auth, requireAdminOrLeader, async (req, res
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Attendance');
     
-    // Define columns (added Present/Absent column)
-    worksheet.columns = [
-      { header: 'Username', key: 'username', width: 20 },
-      { header: 'User Group', key: 'userGroup', width: 15 },
-      { header: 'Date', key: 'date', width: 15 },
-      { header: 'Login Time', key: 'loginTime', width: 25 },
-      { header: 'Logout Time', key: 'logoutTime', width: 25 },
-      { header: 'Status', key: 'status', width: 15 }
-    ];
-    
     // Generate all dates in the month
     const datesInMonth = [];
     const currentDate = new Date(startDate);
@@ -139,64 +186,119 @@ router.get('/:year/:month/download', auth, requireAdminOrLeader, async (req, res
       currentDate.setDate(currentDate.getDate() + 1);
     }
     
-    // Add data to worksheet - include all users for all dates
+    // Create header row with dates
+    const headerRow = ['Username'];
+    datesInMonth.forEach(date => {
+      headerRow.push(date.getDate().toString());
+    });
+    headerRow.push('Total Present', 'Total Logged In', 'Total Absent');
+    
+    worksheet.addRow(headerRow);
+    
+    // Process each user
     allUsers.forEach(user => {
-      // If user has attendance records in this month, use them
-      const userAttendanceRecords = user.attendanceRecords.filter(record => {
+      // Create a map of date to attendance record for this user
+      const userAttendanceMap = {};
+      user.attendanceRecords.forEach(record => {
         const recordDate = new Date(record.date);
-        return recordDate >= startDate && recordDate <= endDate;
+        if (recordDate >= startDate && recordDate <= endDate) {
+          const dateKey = recordDate.getDate();
+          userAttendanceMap[dateKey] = record;
+        }
       });
       
-      // If user has attendance records, add them
-      if (userAttendanceRecords.length > 0) {
-        userAttendanceRecords.forEach(record => {
+      // Create row for this user
+      const userRow = [user.username];
+      
+      // Track counts for summary
+      let presentCount = 0;
+      let loggedInCount = 0;
+      let absentCount = 0;
+      
+      // Add attendance status for each date
+      datesInMonth.forEach(date => {
+        const dateKey = date.getDate();
+        const record = userAttendanceMap[dateKey];
+        
+        if (record) {
           // Determine status based on login/logout times
-          let status = 'Absent';
           if (record.loginTime) {
-            status = record.logoutTime ? 'Present' : 'Logged In';
+            if (record.logoutTime) {
+              userRow.push('P'); // Present
+              presentCount++;
+            } else {
+              userRow.push('LI'); // Logged In
+              loggedInCount++;
+            }
+          } else {
+            userRow.push('A'); // Absent
+            absentCount++;
           }
-          
-          worksheet.addRow({
-            username: user.username,
-            userGroup: user.userGroup,
-            date: record.date ? record.date.toISOString().split('T')[0] : '',
-            loginTime: record.loginTime ? record.loginTime.toLocaleString() : '',
-            logoutTime: record.logoutTime ? record.logoutTime.toLocaleString() : '',
-            status: status
-          });
-        });
-      } else {
-        // If user has no attendance records, add placeholder rows for each date
-        datesInMonth.forEach(date => {
-          worksheet.addRow({
-            username: user.username,
-            userGroup: user.userGroup,
-            date: date.toISOString().split('T')[0],
-            loginTime: '',
-            logoutTime: '',
-            status: 'Absent'
-          });
-        });
+        } else {
+          userRow.push('A'); // Absent (no record)
+          absentCount++;
+        }
+      });
+      
+      // Add summary counts
+      userRow.push(presentCount, loggedInCount, absentCount);
+      
+      worksheet.addRow(userRow);
+    });
+    
+    // Style the header row
+    const headerRowObj = worksheet.getRow(1);
+    headerRowObj.font = { bold: true };
+    headerRowObj.alignment = { horizontal: 'center' };
+    
+    // Style the data rows
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.alignment = { horizontal: 'center' };
       }
     });
     
-    // Sort worksheet by username and date
-    worksheet.model.rows.sort((a, b) => {
-      const aUsername = a.cells[1].value || '';
-      const bUsername = b.cells[1].value || '';
-      const aDate = new Date(a.cells[3].value || '').getTime();
-      const bDate = new Date(b.cells[3].value || '').getTime();
-      
-      if (aUsername !== bUsername) {
-        return aUsername.localeCompare(bUsername);
+    // Auto-filter for the data
+    worksheet.autoFilter = {
+      from: 'A1',
+      to: `${String.fromCharCode(64 + headerRow.length)}1`
+    };
+    
+    // Freeze the first row and first column
+    worksheet.views = [
+      {
+        state: 'frozen',
+        xSplit: 1,
+        ySplit: 1,
       }
-      return aDate - bDate;
-    });
+    ];
+    
+    // Set column widths
+    worksheet.getColumn(1).width = 25; // Username column
+    for (let i = 2; i <= datesInMonth.length + 1; i++) {
+      worksheet.getColumn(i).width = 4; // Date columns
+    }
+    // Summary columns
+    worksheet.getColumn(datesInMonth.length + 2).width = 12; // Total Present
+    worksheet.getColumn(datesInMonth.length + 3).width = 12; // Total Logged In
+    worksheet.getColumn(datesInMonth.length + 4).width = 12; // Total Absent
+    
+    // Add some styling to make it look better
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' }
+    };
+    
+    worksheet.getRow(1).font = {
+      bold: true,
+      color: { argb: 'FFFFFFFF' }
+    };
     
     // Set response headers
     const monthName = new Date(yearNum, monthNum - 1).toLocaleString('default', { month: 'long' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=attendance_${monthName}_${yearNum}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=attendance_summary_${monthName}_${yearNum}.xlsx`);
     
     // Write workbook to response
     await workbook.xlsx.write(res);
