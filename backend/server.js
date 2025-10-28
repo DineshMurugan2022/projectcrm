@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
   if (userId) {
     // Join user-specific room
     socket.join(`user_${userId}`);
-    console.log(`🔗 Socket ${socket.id} joined room user_${userId}`);
+    console.log(`🔗 Socket ${socket.id} joined room user_${userId} (auto-join on connection)`);
     
     // Track connected user
     connectedUsers.set(userId, {
@@ -74,6 +74,8 @@ io.on("connection", (socket) => {
     
     // Notify others that user is online
     socket.broadcast.emit('userStatusChanged', { userId, status: 'active' });
+  } else {
+    console.log(`⚠️ Socket ${socket.id} connected without userId`);
   }
   
   // Handle user activity updates
@@ -125,6 +127,16 @@ io.on("connection", (socket) => {
   socket.on('joinRoom', (roomName) => {
     socket.join(roomName);
     console.log(`🚪 Socket ${socket.id} joined room ${roomName}`);
+  });
+  
+  // Handle joining user-specific room
+  socket.on('joinUserRoom', (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+      console.log(`🚪 Socket ${socket.id} joined user room user_${userId}`);
+    } else {
+      console.log(`⚠️ joinUserRoom called without userId`);
+    }
   });
   
   // Handle BDM joining a tracking session
@@ -257,25 +269,6 @@ io.on("connection", (socket) => {
     // Also emit to user-specific rooms for targeted notifications
     if (data.appointment?.createdBy) {
       socket.to(`user_${data.appointment.createdBy}`).emit('appointmentUpdated', data);
-    }
-  });
-  
-  // Handle task notifications
-  socket.on('taskAssigned', (data) => {
-    console.log(`📋 Task assigned:`, data);
-    
-    // Send notification to assigned user
-    if (data.assigneeId) {
-      socket.to(`user_${data.assigneeId}`).emit('taskAssigned', data);
-    }
-  });
-  
-  socket.on('taskUpdated', (data) => {
-    console.log(`🔄 Task updated:`, data);
-    
-    // Send notification to assigned user
-    if (data.assigneeId) {
-      socket.to(`user_${data.assigneeId}`).emit('taskUpdated', data);
     }
   });
   
@@ -425,6 +418,11 @@ app.use(
   },
   tasksRouter
 );
+
+// Add queries route
+const queriesRouter = require("./routes/queries");
+app.use("/api/queries", queriesRouter);
+
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRouter);
 app.use("/api/calls", callsRouter);
