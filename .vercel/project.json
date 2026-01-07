@@ -1,0 +1,7 @@
+{
+  "projectId": "prj_s8NgDuq4Af9xistCcaPTdb978oiP",
+  "orgId": "team_71PhcSMeBahMfilyVBP1CSOJ",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rootDirectory": "frontend"
+}
