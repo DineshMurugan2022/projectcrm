@@ -69,41 +69,13 @@ const appointmentSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-// Revenue Report Schema
-const revenueReportSchema = new mongoose.Schema({
-  month: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 12
-  },
-  year: {
-    type: Number,
-    required: true
-  },
-  totalContracts: {
-    type: Number,
-    default: 0
-  },
-  totalRevenue: {
-    type: Number,
-    default: 0
-  },
-  netSales: {
-    type: Number,
-    default: 0
-  },
-  pendingAmounts: {
-    type: Number,
-    default: 0
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}, { timestamps: true });
+// Performance Indexes
+appointmentSchema.index({ date: -1 });
+appointmentSchema.index({ assignedBDM: 1 });
+appointmentSchema.index({ createdBy: 1 });
+appointmentSchema.index({ signed: 1 });
+appointmentSchema.index({ companyName: 1 });
 
 const Appointment = mongoose.model('Appointment', appointmentSchema);
-const RevenueReport = mongoose.model('RevenueReport', revenueReportSchema);
 
-module.exports = { Appointment, RevenueReport };
+module.exports = Appointment;
