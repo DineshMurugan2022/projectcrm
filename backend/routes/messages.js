@@ -4,28 +4,59 @@ const auth = require('../middleware/auth');
 const Message = require('../models/Message');
 const User = require('../models/User');
 const { getIOInstance } = require('../sockets/io');
+const { chatStorage } = require('../services/cloudinary');
 
 const multer = require('multer');
 
 const fs = require('fs');
 
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = 'uploads/chat';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+// Configure multer for file upload using Cloudinary
+const upload = multer({
+  storage: chatStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+// Get unread message count - WITH DEBUG LOGGING
+router.get('/unread-count', auth, async (req, res) => {
+  console.log('🔍 [DEBUG] Unread count endpoint hit');
+
+  try {
+    console.log('🔍 [DEBUG] req.user exists:', !!req.user);
+    console.log('🔍 [DEBUG] req.user.id:', req.user?.id);
+    console.log('🔍 [DEBUG] req.user._id:', req.user?._id);
+
+    // Handle both req.user.id and req.user._id
+    const currentUserId = req.user.id || req.user._id;
+
+    console.log('🔍 [DEBUG] Extracted user ID:', currentUserId);
+
+    if (!currentUserId) {
+      console.error('❌ No user ID found in request');
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    console.log('📬 Fetching unread count for user:', currentUserId);
+    console.log('🔍 [DEBUG] About to query database...');
+
+    const unreadCount = await Message.countDocuments({
+      recipient: currentUserId,
+      read: false
+    });
+
+    console.log('📬 Unread count result:', unreadCount);
+
+    res.json({ unreadCount });
+  } catch (error) {
+    console.error('❌ Error fetching unread count:');
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({
+      error: 'Server error',
+      details: error.message,
+      name: error.name
+    });
+  }
 });
 
 // Get conversation between two users (simplified for new chat)
@@ -173,10 +204,8 @@ router.post('/send', auth, upload.single('file'), async (req, res) => {
     };
 
     if (file) {
-      // In a real app, you'd perform a cloud upload here. 
-      // For now, we serve from the local uploads directory.
-      // Make sure your backend serves 'uploads' folder statically.
-      messageData.mediaUrl = `/uploads/chat/${file.filename}`;
+      // Use Cloudinary secure URL
+      messageData.mediaUrl = file.path;
       messageData.fileName = file.originalname;
       messageData.mimeType = file.mimetype;
       messageData.content = file.originalname; // Show filename as content/fallback
@@ -224,49 +253,6 @@ router.put('/read/:userId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Get unread message count - WITH DEBUG LOGGING
-router.get('/unread-count', auth, async (req, res) => {
-  console.log('🔍 [DEBUG] Unread count endpoint hit');
-
-  try {
-    console.log('🔍 [DEBUG] req.user exists:', !!req.user);
-    console.log('🔍 [DEBUG] req.user.id:', req.user?.id);
-    console.log('🔍 [DEBUG] req.user._id:', req.user?._id);
-
-    // Handle both req.user.id and req.user._id
-    const currentUserId = req.user.id || req.user._id;
-
-    console.log('🔍 [DEBUG] Extracted user ID:', currentUserId);
-
-    if (!currentUserId) {
-      console.error('❌ No user ID found in request');
-      return res.status(401).json({ error: 'User not authenticated' });
-    }
-
-    console.log('📬 Fetching unread count for user:', currentUserId);
-    console.log('🔍 [DEBUG] About to query database...');
-
-    const unreadCount = await Message.countDocuments({
-      recipient: currentUserId,
-      read: false
-    });
-
-    console.log('📬 Unread count result:', unreadCount);
-
-    res.json({ unreadCount });
-  } catch (error) {
-    console.error('❌ Error fetching unread count:');
-    console.error('❌ Error name:', error.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    res.status(500).json({
-      error: 'Server error',
-      details: error.message,
-      name: error.name
-    });
   }
 });
 

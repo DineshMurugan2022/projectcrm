@@ -25,17 +25,29 @@ This guide provides the exact steps to deploy your current setup. Because you ar
 3.  **Root Directory**: `backend`  *(CRITICAL: You must set this to 'backend')*.
 4.  **Build & Start Commands**:
     *   **Build Command**: `npm install`
-    *   **Start Command**: `npm start` *(This automatically launches PM2 now)*.
+    *   **Start Command**: `npm start` 
 
 ---
 
-## 🆘 Troubleshooting: "ENOENT: no such file"
+## 🆘 The "Golden Fix" for "ENOENT: no such file"
 
-If Render says it cannot find your files, check these 3 things in order:
+If Render continues to fail, it is strictly because the files aren't on GitHub yet. **Follow these exact 4 steps in your terminal:**
 
-1.  **Did you PUSH your code?**: Render only sees what is on GitHub. You must `git add .`, `git commit -m "Enterpise setup"`, and `git push` before deploying.
-2.  **Root Directory**: In Render's **Settings > General**, make sure **Root Directory** is set to `backend`.
-3.  **Pathing**: Ensure you are not trying to run `npx pm2 start backend/...` inside the dashboard settings. Because the **Root Directory** is already `backend`, your start command should simply be `npm start`.
+1.  **Stop all servers** (Press Ctrl+C in all terminals).
+2.  **Add all new files**:
+    ```bash
+    git add .
+    ```
+3.  **Commit with a clear message**:
+    ```bash
+    git commit -m "Fix pm2 pathing and root directory"
+    ```
+4.  **Push to your repository**:
+    ```bash
+    git push
+    ```
+
+**Once you push, Render will see the new `ecosystem.config.js` and the updated `package.json`, and the error will disappear.**
     *   `PORT`: `10000` (Render's default)
     *   `MONGO_URI`: `...your-atlas-url...`
     *   `JWT_SECRET`: `...your-secret...`

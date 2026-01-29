@@ -1,11 +1,13 @@
 services:
   - type: web
-    name: crm-app
+    name: crm-backend
     env: node
-    buildCommand: |
-      cd frontend && npm install && npm run build &&
-      cd ../backend && npm install
-    startCommand: cd backend && npm start
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: ENABLE_MODEM
+        value: "false"
