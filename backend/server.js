@@ -14,6 +14,7 @@ const logger = require("./utils/logger");
 const connectDB = require("./db");
 const { pubClient, subClient, connectRedis } = require("./services/redis");
 const { createAdapter } = require("@socket.io/redis-adapter");
+const cronService = require("./services/cronService");
 
 const { handleTimeout } = require("./services/session");
 const auth = require("./middleware/auth");
@@ -36,95 +37,119 @@ const messagesRouter = require("./routes/messages");
 
 const app = express();
 
-// Trust the first proxy (Render) for accurate IP-based rate limiting
-app.set('trust proxy', 1);
-
-// Use Morgan for HTTP request logging (linked to Winston)
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: logger.stream }));
-
 const server = http.createServer(app);
 
-// Socket.IO setup with enhanced configuration
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ["http://localhost:5173", "http://localhost:3000"],
-    credentials: true,
-    methods: ["GET", "POST"]
-  },
-  transports: ["websocket", "polling"],
-  upgrade: true,
-  allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  maxHttpBufferSize: 1e8,
-  compression: true
-});
+// ----------------- GLOBAL MIDDLEWARE -----------------
+// 1. Trust proxy for Render
+app.set('trust proxy', 1);
 
-// Configure Redis adapter for Socket.IO scaling
-io.adapter(createAdapter(pubClient, subClient));
+// 2. Logging
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms', { stream: logger.stream }));
 
-// Initialize Socket.IO handlers
-const setupSocketIO = require("./sockets");
-setupSocketIO(io);
+// 3. SECURE CORS (Must be at the very top)
+const hardcodedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://nothing-nine-neon.vercel.app",
+  "https://bnycrm1.vercel.app",
+  "https://frontend-eosin-zeta-66.vercel.app",
+  "https://bnycrm.netlify.app"
+];
 
-// Connect to MongoDB
-connectDB();
+const envOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : [];
 
-// Connect to Redis
-connectRedis();
+const allowedOrigins = [...new Set([...hardcodedOrigins, ...envOrigins])];
 
-// Enhanced CORS configuration for production and development
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-
-    // List of allowed origins from environment variable
-    // List of allowed origins from environment variable
-    const allowedOrigins = process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
-      : ["http://localhost:5173", "http://localhost:3000", "https://nothing-nine-neon.vercel.app", "https://frontend-eosin-zeta-66.vercel.app", "https://bnycrm1.vercel.app", "https://bnycrm.netlify.app/", "https://bnycrm1.vercel.app"];
-
-    // Check if the origin is in our allowed list
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.some(ao => ao === origin || (typeof origin === 'string' && origin.startsWith(ao)))) {
       callback(null, true);
     } else {
       console.log(`⚠️ CORS Blocked: Origin ${origin} not allowed`);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false); // Reject without throwing Error
     }
   },
   credentials: true,
   optionsSuccessStatus: 200,
-  exposedHeaders: ['Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Authorization', 'Set-Cookie']
 };
 
-// Apply CORS middleware
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle global preflight
 
-// Also handle preflight requests explicitly
-app.options('*', cors(corsOptions));
-
-// Apply Gzip compression to all responses
-app.use(compression());
-
+// 4. Security Headers
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "wss://localhost:*", "https://backend-4jwl.onrender.com", "wss://backend-4jwl.onrender.com"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Needed for Vite/React
+        connectSrc: ["'self'", "http://localhost:*", "ws://localhost:*", "wss://localhost:*", "https://backend-4jwl.onrender.com", "wss://backend-4jwl.onrender.com", "https://*.onrender.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "blob:", "https://user-images.githubusercontent.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://user-images.githubusercontent.com"],
       },
     },
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
+
+// 5. Body Parsing
+app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
-app.use(express.json({ limit: "2mb" }));
+app.use(compression());
+
+// ----------------- SOCKET.IO SETUP -----------------
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"]
+  },
+  transports: ["websocket", "polling"],
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+// ----------------- SERVICES & DATABASE -----------------
+// Initialize async services
+const initializeServices = async () => {
+  try {
+    // 1. Connect MongoDB
+    await connectDB();
+
+    // 2. Connect Redis
+    const redisReady = await connectRedis();
+
+    // 3. Attach Redis Adapter only if ready
+    if (redisReady) {
+      try {
+        io.adapter(createAdapter(pubClient, subClient));
+        console.log('🔌 Socket.IO Redis adapter initialized');
+      } catch (err) {
+        console.error('❌ Failed to initialize Redis adapter:', err.message);
+      }
+    }
+
+    // 4. Setup Socket.IO handlers
+    const setupSocketIO = require("./sockets");
+    setupSocketIO(io);
+
+    // 5. Start Modem
+    const { connectHuaweiE173 } = require("./services/modem");
+    connectHuaweiE173(io);
+
+    console.log('✅ All services initialized successfully');
+  } catch (error) {
+    console.error('🔥 CRITICAL: Service initialization failed:', error.message);
+  }
+};
+
+initializeServices();
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -251,11 +276,7 @@ if (fs.existsSync(frontendPath)) {
   });
 }
 
-const cronService = require("./services/cronService");
-
-// Initialize Huawei E173 Modem
-const { connectHuaweiE173 } = require("./services/modem");
-connectHuaweiE173(io);
+// ----------------- CRON & CLEANUP -----------------
 
 // ----------------- CRON JOBS -----------------
 // Initialize Auto-Logout Job (Runs check immediately and then hourly)
