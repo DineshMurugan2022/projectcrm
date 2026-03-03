@@ -10,6 +10,8 @@ const huaweiAudioBridge = require("../services/huaweiAudioBridge");
 const huaweiE173Audio = require("../services/huaweiE173Audio"); // Use specialized E173 audio service
 const simpleUSBBridge = require("../services/simpleUSBHeadsetBridge"); // Fix reference error
 const auth = require('../middleware/auth'); // Import auth middleware
+const cloudConnect = require('../services/cloudConnect');
+const { getIOInstance } = require('../sockets/io');
 
 // Middleware to validate request body
 const validateCallLog = (req, res, next) => {
@@ -48,18 +50,27 @@ router.get('/', auth, async (req, res) => {
     const { phone } = req.query;
     let logs;
     if (phone) {
-      logs = await CallLog.find({ phoneNumber: phone }).sort({ callTime: -1 });
+      logs = await CallLog.find({ phoneNumber: phone }).sort({ callTime: -1 }).limit(100);
     } else {
-      logs = await CallLog.find().sort({ callTime: -1 });
-    }
-    if (!logs.length) {
-      return res.status(404).json({ message: 'No call logs found' });
+      logs = await CallLog.find().sort({ callTime: -1 }).limit(100);
     }
     res.json(logs);
   } catch (error) {
     console.error('Failed to fetch call logs:', error);
     res.status(500).json({ error: 'Failed to fetch call logs', details: error.message });
   }
+});
+
+router.get('/sip-config', auth, (req, res) => {
+  res.json({
+    user: process.env.VITE_SIP_USER || '701',
+    username: process.env.VITE_SIP_USERNAME || '102597701',
+    domain: process.env.VITE_SIP_DOMAIN || 'cccpl',
+    registrar: process.env.VITE_SIP_REGISTRAR || 'sip2.cloud-connect.in',
+    password: process.env.VITE_SIP_PASSWORD || 'B&Y@005#',
+    wssUrl: process.env.VITE_SIP_WSS_URL || 'wss://sip2.cloud-connect.in:7443/',
+    extension: req.user?.extension || 'CRM User'
+  });
 });
 
 // PATCH /api/calls/:id - Update call log (e.g., duration after hang-up)
@@ -361,6 +372,72 @@ router.post('/test-ringtone', auth, async (req, res) => {
   } catch (error) {
     console.error('Ringtone test error:', error);
     res.status(500).json({ error: 'Failed to test ringtone', details: error.message });
+  }
+});
+
+// --- CLOUDCONNECT SPECIFIC ROUTES ---
+
+// POST /api/calls/click-to-call - Initiate Click-to-Call
+router.post('/click-to-call', auth, async (req, res) => {
+  try {
+    const { phoneNumber, extensionNumber, extensionPassword } = req.body;
+    if (!phoneNumber || !extensionNumber) {
+      return res.status(400).json({ error: 'phoneNumber and extensionNumber are required' });
+    }
+
+    const password = extensionPassword || process.env.VITE_SIP_PASSWORD || 'B&Y@005#';
+    const result = await cloudConnect.clickToCall(phoneNumber, extensionNumber, password);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Click-to-Call failed', details: error.message });
+  }
+});
+
+// POST /api/calls/cloud-logs - Get logs from CloudConnect
+router.post('/cloud-logs', auth, async (req, res) => {
+  try {
+    const { startDate, endDate, tenantId, number } = req.body;
+    const tenant = tenantId || process.env.VITE_SIP_DOMAIN || 'cccpl';
+    const result = await cloudConnect.getCallLogs(startDate, endDate, tenant, number);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch CloudConnect logs', details: error.message });
+  }
+});
+
+// POST /api/calls/cid-routing - Manage CID Routing
+router.post('/cid-routing', auth, async (req, res) => {
+  try {
+    const { action, data } = req.body;
+    const result = await cloudConnect.manageCidRouting(action, data);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: `CID Routing ${action} failed`, details: error.message });
+  }
+});
+
+// POST /api/calls/webhook - CloudConnect Webhook Receiver
+// Note: This endpoint should be public or use a different secret if CloudConnect expects no auth
+router.post('/webhook', async (req, res) => {
+  try {
+    const event = req.body;
+    console.log('🔔 CloudConnect Webhook Received:', event);
+
+    const io = getIOInstance();
+    if (io) {
+      // Broadcast event to relevant users/rooms
+      io.emit('cloudConnectEvent', event);
+
+      // If it's a specific extension, we could emit to a room
+      if (event.extension_number) {
+        io.to(`user_${event.extension_number}`).emit('callStatusUpdate', event);
+      }
+    }
+
+    res.json({ status: 'SUCCESS' });
+  } catch (error) {
+    console.error('Webhook Error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
