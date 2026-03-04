@@ -28,15 +28,24 @@ const validateCallLog = (req, res, next) => {
 // POST /api/calls - Add a new call log
 router.post('/', auth, validateCallLog, async (req, res) => {
   try {
-    const { phoneNumber, personName, companyName } = req.body;
+    const { phoneNumber, personName, companyName, direction } = req.body;
     const log = new CallLog({
       phoneNumber,
       personName,
       companyName,
       callTime: new Date(),
       duration: 0, // Initial duration, to be updated after call ends
+      direction: direction || 'outbound',
+      userId: req.user._id
     });
     await log.save();
+
+    // Emit a socket event so live monitors update instantly
+    const io = getIOInstance();
+    if (io) {
+      io.emit('callLogAdded', { userId: req.user._id, logId: log._id });
+    }
+
     res.status(201).json(log);
   } catch (error) {
     console.error('Failed to log call:', error);
@@ -60,6 +69,63 @@ router.get('/', auth, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch call logs', details: error.message });
   }
 });
+// GET /api/calls/daily-stats - Get aggregated daily stats for monitoring dashboard
+router.get('/daily-stats', auth, async (req, res) => {
+  try {
+    // Get beginning of today (local time approximated to UTC based on server, ideally should use timezone)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const stats = await CallLog.aggregate([
+      {
+        $match: {
+          callTime: { $gte: today },
+          userId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: "$userId",
+          totalCalls: { $sum: 1 },
+          inboundCount: {
+            $sum: { $cond: [{ $eq: ["$direction", "inbound"] }, 1, 0] }
+          },
+          outboundCount: {
+            $sum: { $cond: [{ $eq: ["$direction", "outbound"] }, 1, 0] }
+          },
+          totalDuration: { $sum: { $ifNull: ["$duration", 0] } }
+        }
+      },
+      {
+        $project: {
+          userId: "$_id",
+          totalCalls: 1,
+          inboundCount: 1,
+          outboundCount: 1,
+          totalDuration: 1,
+          avgDuration: {
+            $cond: [
+              { $eq: ["$totalCalls", 0] },
+              0,
+              { $round: [{ $divide: ["$totalDuration", "$totalCalls"] }, 0] }
+            ]
+          }
+        }
+      }
+    ]);
+
+    // Convert array to dictionary keyed by userId for fast lookup on frontend
+    const statsMap = stats.reduce((acc, curr) => {
+      acc[curr.userId.toString()] = curr;
+      return acc;
+    }, {});
+
+    res.json(statsMap);
+  } catch (error) {
+    console.error('Failed to fetch daily call stats:', error);
+    res.status(500).json({ error: 'Failed to fetch daily call stats', details: error.message });
+  }
+});
 
 router.get('/sip-config', auth, (req, res) => {
   res.json({
@@ -77,18 +143,31 @@ router.get('/sip-config', auth, (req, res) => {
 router.patch('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { duration } = req.body;
-    if (duration === undefined || isNaN(duration) || duration < 0) {
-      return res.status(400).json({ error: 'Valid duration (in seconds) is required' });
+    const { duration, status } = req.body;
+
+    const updateData = {};
+    if (duration !== undefined && !isNaN(duration) && duration >= 0) {
+      updateData.duration = duration;
     }
+    if (status) {
+      updateData.status = status;
+    }
+
     const log = await CallLog.findByIdAndUpdate(
       id,
-      { duration },
+      updateData,
       { new: true, runValidators: true }
     );
     if (!log) {
       return res.status(404).json({ error: 'Call log not found' });
     }
+
+    // Emit socket event to trigger re-fetch of stats
+    const io = getIOInstance();
+    if (io && log.userId) {
+      io.emit('callLogUpdated', { userId: log.userId, logId: log._id });
+    }
+
     res.json(log);
   } catch (error) {
     console.error('Failed to update call log:', error);
@@ -135,7 +214,7 @@ router.post('/make', auth, async (req, res) => {
       personName,
       companyName,
       callTime: new Date(),
-      userId: req.user.id, // Track the user
+      userId: req.user._id, // Track the user using Mongoose _id
       sid: result.callSid,
       status: 'initiated',
       duration: 0

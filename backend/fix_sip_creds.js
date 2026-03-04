@@ -8,12 +8,12 @@ async function run() {
 
     // Restore correct per-user extensions based on what was observed
     const updates = [
-        { username: 'admin', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
-        { username: 'Dinesh@bny', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
-        { username: 'Thilag@bny', sipExtension: '702', sipUsername: '102597702', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
-        { username: 'Thenmozhi@bny', sipExtension: '703', sipUsername: '102597703', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
-        { username: 'Sowbar@bny', sipExtension: '704', sipUsername: '102597704', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
-        { username: 'Gopi@bny', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'cccpl' },
+        { username: 'admin', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
+        { username: 'Dinesh@bny', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
+        { username: 'Thilag@bny', sipExtension: '702', sipUsername: '102597702', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
+        { username: 'Thenmozhi@bny', sipExtension: '703', sipUsername: '102597703', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
+        { username: 'Sowbar@bny', sipExtension: '704', sipUsername: '102597704', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
+        { username: 'Gopi@bny', sipExtension: '701', sipUsername: '102597701', sipPassword: 'B&Y@005#', sipDomain: 'sip2.cloud-connect.in' },
     ];
 
     for (const u of updates) {
