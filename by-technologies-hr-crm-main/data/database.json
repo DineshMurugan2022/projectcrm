@@ -1,0 +1,86 @@
+{
+  "admin": {
+    "name": "admin",
+    "password": "admin123"
+  },
+  "employees": [
+    {
+      "id": "emp_1788780260236",
+      "empId": "BYT-101",
+      "name": "Ganesh Kumaar P",
+      "email": "",
+      "phone": "7695979878",
+      "designation": "Managing Director",
+      "department": "Executive Leadership",
+      "dateOfJoining": "2026-09-07",
+      "status": "active",
+      "password": "password123",
+      "avatarUrl": "https://api.dicebear.com/7.x/initials/svg?seed=Ganesh%20Kumaar%20P&backgroundColor=331e1e&textColor=a2fc4b",
+      "dob": "1998-06-15",
+      "addressLine1": "No: 12, Anna Nagar 2nd Avenue,",
+      "addressLine2": "Shenoy Nagar,",
+      "cityStatePin": "Chennai, Tamil Nadu - 600030",
+      "annualSalary": 600000,
+      "monthlySalary": 50000,
+      "createdAt": "2026-09-07T11:24:20.244Z",
+      "updatedAt": "2026-09-07T11:24:20.244Z"
+    }
+  ],
+  "attendance": [],
+  "leaves": [],
+  "loginLogs": [],
+  "jobs": [],
+  "chatMessages": [],
+  "chatChannels": [
+    {
+      "id": "general",
+      "name": "#general",
+      "description": "Company-wide announcements, agency updates & general discussions",
+      "isGroup": true,
+      "memberIds": [
+        "all"
+      ],
+      "createdAt": "2026-09-07T10:04:55.318Z"
+    },
+    {
+      "id": "management",
+      "name": "#management",
+      "description": "Leadership team: Managing Director, GM, HR & Tech Leads",
+      "isGroup": true,
+      "memberIds": [
+        "all"
+      ],
+      "createdAt": "2026-09-07T10:04:55.318Z"
+    },
+    {
+      "id": "tech-and-design",
+      "name": "#tech-and-design",
+      "description": "Engineering sprints, UI/UX designs, website builds & tech stack",
+      "isGroup": true,
+      "memberIds": [
+        "all"
+      ],
+      "createdAt": "2026-09-07T10:04:55.318Z"
+    },
+    {
+      "id": "seo-and-growth",
+      "name": "#seo-and-growth",
+      "description": "SEO ranking reports, keyword strategies, content audits & campaigns",
+      "isGroup": true,
+      "memberIds": [
+        "all"
+      ],
+      "createdAt": "2026-09-07T10:04:55.318Z"
+    },
+    {
+      "id": "sales-and-telecalling",
+      "name": "#sales-and-telecalling",
+      "description": "Client outreach, lead pipelines, telecalling scripts & closures",
+      "isGroup": true,
+      "memberIds": [
+        "all"
+      ],
+      "createdAt": "2026-09-07T10:04:55.318Z"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>NDA Agreement - Anand Kumar</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    @page {
+      size: 8.5in 11.0in;
+      margin: 1.0in 1.0in 1.0in 1.0in;
+      mso-header-margin: 0.5in;
+      mso-footer-margin: 0.5in;
+    }
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      color: #331E1E;
+      line-height: 1.6;
+      font-size: 11pt;
+      background-color: #ffffff;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      font-family: 'Georgia', serif;
+      color: #331E1E;
+      margin-bottom: 8px;
+    }
+    .header-table {
+      width: 100%;
+      border-bottom: 2pt solid #A2FC4B;
+      padding-bottom: 12px;
+      margin-bottom: 25px;
+    }
+    .brand-name {
+      font-size: 20pt;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #331E1E;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-size: 9pt;
+      color: #706161;
+      font-style: italic;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #A2FC4B;
+      color: #331E1E;
+      padding: 4px 10px;
+      font-size: 9pt;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .section-title {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #331E1E;
+      border-bottom: 1pt solid #E2EAD6;
+      padding-bottom: 4px;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    table.data-table th {
+      background-color: #331E1E;
+      color: #ffffff;
+      padding: 8px 12px;
+      font-size: 10pt;
+      text-align: left;
+    }
+    table.data-table td {
+      border: 1pt solid #E2EAD6;
+      padding: 8px 12px;
+      font-size: 10pt;
+    }
+    .signature-box {
+      margin-top: 50px;
+      width: 100%;
+    }
+    .signature-line {
+      border-top: 1pt solid #331E1E;
+      width: 200px;
+      margin-top: 40px;
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+  <table class="header-table">
+    <tr>
+      <td>
+        <div class="brand-name">B &amp; Y TECHNOLOGIES</div>
+        <div class="brand-sub">Digital Marketing Agency &bull; Chennai &bull; India</div>
+      </td>
+      <td style="text-align: right;">
+        <span class="badge">OFFICIAL HR DOCUMENT</span>
+      </td>
+    </tr>
+  </table>
+
+  
+    <h2 style="text-align: center; margin-bottom: 5px;">NON-DISCLOSURE &amp; CONFIDENTIALITY AGREEMENT</h2>
+    <div style="text-align: center; font-size: 10pt; color: #706161; margin-bottom: 25px;">
+      Digital Marketing Agency &bull; Client Data &bull; Proprietary Assets
+    </div>
+
+    <p>This Non-Disclosure Agreement ("Agreement") is executed on <strong>September 5, 2026</strong> by and between:</p>
+
+    <p>
+      <strong>B &amp; Y Technologies</strong>, a digital marketing agency having its registered office in Chennai ("Company"),<br>
+      AND<br>
+      <strong>Anand Kumar</strong>, holding Employee ID <strong>BYT-101</strong>, currently engaged as <strong>Managing Director</strong> ("Employee").
+    </p>
+
+    <div class="section-title">1. Confidential Information Defined</div>
+    <p>
+      Confidential information includes, without limitation: client business data, digital marketing strategy blueprints, 
+      Google Ads &amp; Meta Ads account access, conversion rate data, SEO keyword databases, proprietary agency software, 
+      telecalling client databases, creative assets, and client compensation arrangements.
+    </p>
+
+    <div class="section-title">2. Obligations of Non-Disclosure</div>
+    <p>
+      The Employee agrees not to disclose, duplicate, transfer, or exploit any Confidential Information for personal benefit 
+      or the benefit of any third-party during employment or subsequent to separation from the Company.
+    </p>
+
+    <div class="section-title">3. Return of Materials</div>
+    <p>
+      Upon termination or request, the Employee shall immediately return all documents, client credentials, laptops, digital files, 
+      and correspondence belonging to the Company.
+    </p>
+
+    <table class="signature-box">
+      <tr>
+        <td style="width: 50%;">
+          <strong>B &amp; Y Technologies</strong>
+          <div class="signature-line">
+            Authorized Executive Signature
+          </div>
+        </td>
+        <td style="width: 50%; text-align: right;">
+          <div style="display: inline-block; text-align: left;">
+            <strong>Anand Kumar</strong> (BYT-101)
+            <div class="signature-line">
+              Employee Signature
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  
+
+  <div style="margin-top: 40px; font-size: 8pt; color: #706161; text-align: center; border-top: 1pt solid #E2EAD6; padding-top: 10px;">
+    B &amp; Y Technologies &bull; Confidential &bull; For Internal &amp; Employee Use Only
+  </div>
+</body>
+</html>

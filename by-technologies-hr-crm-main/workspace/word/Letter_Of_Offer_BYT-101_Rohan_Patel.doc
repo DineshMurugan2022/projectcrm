@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Letter Of Offer - Rohan Patel - B&amp;Y Technologies</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm 15mm 15mm;
+      mso-header-margin: 0.3in;
+      mso-footer-margin: 0.3in;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+      color: #1a1a1a;
+      background-color: #ffffff;
+      font-size: 9.8pt;
+      line-height: 1.5;
+    }
+    .page-container {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0;
+      background: #ffffff;
+      padding: 14mm 16mm 14mm 16mm;
+      position: relative;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .page-container {
+        margin: 0;
+        padding: 12mm 15mm;
+        width: 100%;
+        min-height: 297mm;
+        box-shadow: none;
+        page-break-after: always;
+        break-after: page;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+    .terms-ol {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 9.1pt;
+      line-height: 1.52;
+      color: #1f1f1f;
+    }
+    .terms-ol li {
+      margin-bottom: 7px;
+      text-align: justify;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1: LETTER OF OFFER ==================== -->
+  <div class="page-container">
+    
+    <div style="position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%) rotate(-32deg); font-family: 'Georgia', serif; font-size: 110pt; font-weight: bold; color: #19385C; opacity: 0.038; letter-spacing: 14px; pointer-events: none; z-index: 0; user-select: none;">
+      B&amp;Y
+    </div>
+  
+    
+    <div style="position: relative; margin-bottom: 22px; padding-bottom: 12px; border-bottom: 1.5pt solid #E2EAD6;">
+      <div style="position: absolute; top: -14mm; right: -16mm; width: 130px; height: 70px; overflow: hidden; pointer-events: none; z-index: 2;">
+        
+    <svg width="130" height="70" viewBox="0 0 130 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <polygon points="35,0 130,0 130,70 65,70" fill="#19385C" />
+      <polygon points="0,0 55,0 108,70 52,70" fill="#A2FC4B" />
+    </svg>
+  
+      </div>
+      <table style="width: 100%; border-collapse: collapse; position: relative; z-index: 1;">
+        <tr>
+          <td style="width: 65px; vertical-align: middle;">
+            <div style="position: relative; width: 58px; height: 58px; display: inline-block;">
+              <img src="data:image/png;base64,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" alt="B&amp;Y Logo" style="width: 58px; height: 58px; border-radius: 50%; display: block;" />
+              <span style="position: absolute; top: -2px; right: -6px; font-size: 9pt; font-weight: bold; color: #19385C; font-family: serif;">&reg;</span>
+            </div>
+          </td>
+          <td style="vertical-align: middle; padding-left: 12px;">
+            <div style="font-family: 'Georgia', serif; font-size: 20pt; font-weight: bold; color: #19385C; letter-spacing: 0.5px; line-height: 1.1;">
+              B&amp;Y Technologies
+            </div>
+            <div style="font-family: 'Georgia', serif; font-size: 9pt; font-style: italic; color: #606060; margin-top: 3px;">
+              Together, we&#39;ll grow your business
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  
+
+    <div style="position: relative; z-index: 1; flex: 1;">
+      <div style="text-align: center; font-family: 'Georgia', serif; font-size: 19pt; font-weight: bold; color: #1E518A; letter-spacing: 0.5px; margin-top: 6px; margin-bottom: 8px;">
+        Letter Of Offer
+      </div>
+
+      <div style="text-align: right; font-size: 9.5pt; color: #222222; margin-bottom: 14px; font-weight: 500;">
+        September 05, 2026
+      </div>
+
+      <div style="margin-bottom: 16px; font-size: 9.5pt; line-height: 1.45; color: #222222;">
+        <div style="font-weight: 600; color: #333333; margin-bottom: 2px;">To,</div>
+        <div style="font-size: 11pt; font-weight: bold; color: #111111; text-transform: uppercase; letter-spacing: 0.5px;">
+          ROHAN PATEL
+        </div>
+        <div style="margin: 3px 0; color: #2b2b2b;">
+          <span><strong>DOB :</strong> 14/05/1998</span>
+          <span style="margin-left: 20px;"><strong>Emp ID :</strong> BYT-101</span>
+        </div>
+        <div>No: 12, Anna Nagar 2nd Avenue,</div>
+        <div>Shenoy Nagar,</div>
+        <div>Chennai, Tamil Nadu - 600030</div>
+      </div>
+
+      <div style="font-size: 10pt; font-weight: bold; color: #19385C; margin-bottom: 12px;">
+        Dear Mr./Ms. Rohan,
+      </div>
+
+      <p style="font-size: 9.5pt; line-height: 1.6; color: #262626; text-align: justify; margin-bottom: 16px;">
+        Thank you for exploring career opportunities with B &amp; Y Technologies. We are pleased to make you an offer as 
+        <strong>UI/UX Developer</strong> in B &amp; Y Technologies registered office 
+        <strong>624, Anna salai, 4th floor khivraj Building near gemini flyover chennai - 600 006</strong>. 
+        The key components of this offer.
+      </p>
+
+      <div style="margin: 14px 0 20px 0;">
+        <div style="margin-bottom: 12px; font-size: 9.5pt; line-height: 1.55;">
+          <strong style="color: #19385C;">Title :</strong> 
+          <span style="margin-left: 6px; font-weight: 600;">UI/UX Developer</span>
+        </div>
+
+        <div style="margin-bottom: 14px; font-size: 9.5pt; line-height: 1.55; text-align: justify;">
+          <strong style="color: #19385C;">Compensation :</strong> 
+          <span>Your Total Gross pay will be <strong>INR 4,20,000 (Rupees Four Lakh Twenty Thousand Only)</strong> per annum. In addition you will be eligible for performance based incentives as advised from time to time.</span>
+        </div>
+
+        <div style="margin-bottom: 12px; font-size: 9.2pt; line-height: 1.55; color: #2c2c2c; text-align: justify;">
+          In the event you desire to leave the services of the company you are required to give one month&#39;s advance notice in writing. Failure to do so will result in forfeiture of 1 month&#39;s salary and incentives if any, due to you.
+        </div>
+
+        <div style="margin-bottom: 14px; font-size: 9.2pt; line-height: 1.55; color: #2c2c2c; text-align: justify;">
+          In the event that you are absent without permission for more than 3 days it will be deemed as your having absconded and having left the service of the company without providing notice.
+        </div>
+      </div>
+
+      <!-- PAGE 1 DUAL SIGNATURES -->
+      <div style="margin-top: 25px; padding-top: 10px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+              <div style="font-weight: bold; color: #19385C;">FOR B&amp;Y TECHNOLOGIES,</div>
+              <div style="margin-top: 30px; font-weight: bold; color: #111111; font-size: 10.5pt;">Babu B</div>
+              <div style="color: #444444; font-size: 9.5pt;">Branch Manager</div>
+              <div style="color: #666666; font-size: 9pt; margin-top: 4px;">September 05, 2026</div>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+              <div style="color: #333333; margin-bottom: 10px;">Accept the above stated terms of employment,</div>
+              <div style="margin-bottom: 6px;"><strong>Name :</strong> Rohan Patel</div>
+              <div style="margin-bottom: 6px;"><strong>Signature :</strong> _____________________________</div>
+              <div><strong>D.O.J :</strong> 13/08/2020</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    
+    <div style="margin-top: auto; padding-top: 10px; position: relative; z-index: 1;">
+      <div style="font-size: 8pt; color: #555555; text-align: center; font-family: 'Calibri', Arial, sans-serif; line-height: 1.4;">
+        <span style="margin: 0 8px;">🌐 www.bnytechnologies.com</span> &bull;
+        <span style="margin: 0 8px;">📞 9941070555</span> &bull;
+        <span style="margin: 0 8px;">✉️ hr@bnytechnologies.in</span> &bull;
+        <span style="margin: 0 8px;">📍 No : 624 Khivraj Building 4th floor, Anna Salai Chennai-600006</span>
+      </div>
+      <div style="width: 100%; height: 5px; background: linear-gradient(90deg, #19385C 0%, #19385C 62%, #A2FC4B 62%, #A2FC4B 100%); margin-top: 8px; border-radius: 2px;"></div>
+    </div>
+  
+  </div>
+
+  <br clear="all" style="mso-special-character:line-break;page-break-before:always" />
+
+  <!-- ==================== PAGE 2: ANNEXURE (GENERAL TERMS) ==================== -->
+  <div class="page-container">
+    
+    <div style="position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%) rotate(-32deg); font-family: 'Georgia', serif; font-size: 110pt; font-weight: bold; color: #19385C; opacity: 0.038; letter-spacing: 14px; pointer-events: none; z-index: 0; user-select: none;">
+      B&amp;Y
+    </div>
+  
+    
+    <div style="position: relative; margin-bottom: 22px; padding-bottom: 12px; border-bottom: 1.5pt solid #E2EAD6;">
+      <div style="position: absolute; top: -14mm; right: -16mm; width: 130px; height: 70px; overflow: hidden; pointer-events: none; z-index: 2;">
+        
+    <svg width="130" height="70" viewBox="0 0 130 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <polygon points="35,0 130,0 130,70 65,70" fill="#19385C" />
+      <polygon points="0,0 55,0 108,70 52,70" fill="#A2FC4B" />
+    </svg>
+  
+      </div>
+      <table style="width: 100%; border-collapse: collapse; position: relative; z-index: 1;">
+        <tr>
+          <td style="width: 65px; vertical-align: middle;">
+            <div style="position: relative; width: 58px; height: 58px; display: inline-block;">
+              <img src="data:image/png;base64,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" alt="B&amp;Y Logo" style="width: 58px; height: 58px; border-radius: 50%; display: block;" />
+              <span style="position: absolute; top: -2px; right: -6px; font-size: 9pt; font-weight: bold; color: #19385C; font-family: serif;">&reg;</span>
+            </div>
+          </td>
+          <td style="vertical-align: middle; padding-left: 12px;">
+            <div style="font-family: 'Georgia', serif; font-size: 20pt; font-weight: bold; color: #19385C; letter-spacing: 0.5px; line-height: 1.1;">
+              B&amp;Y Technologies
+            </div>
+            <div style="font-family: 'Georgia', serif; font-size: 9pt; font-style: italic; color: #606060; margin-top: 3px;">
+              Together, we&#39;ll grow your business
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  
+
+    <div style="position: relative; z-index: 1; flex: 1;">
+      <div style="font-family: 'Georgia', serif; font-size: 16pt; font-weight: bold; color: #1E518A; margin-bottom: 2px;">
+        Annexure
+      </div>
+      <div style="font-family: 'Georgia', serif; font-size: 11pt; font-weight: bold; color: #19385C; margin-bottom: 12px;">
+        General Terms:
+      </div>
+
+      <ol class="terms-ol">
+        <li>You will be entitled to a Salary of <strong>₹35,000/- per month</strong>.</li>
+        <li>Your performance will be reviewed in 12 months and your Salary will be subsequently revised based on satisfactory performance.</li>
+        <li>Work timings are as <strong>Monday to Friday - 9:30 am to 6:30 pm. | Saturday 9:30 am to 6:30 pm.</strong>.</li>
+        <li>Monthly payments would be paid after deductions of any loans or advances received from the firm.</li>
+        <li>Your reporting and responsibilities will be advised to you by your superior or any person nominated by him/her.</li>
+        <li>You shall, while in the services of the firm, devote your time and attention to the Firm&#39;s work and responsibilities assigned to you.</li>
+        <li>It is expected that you will discharge your assigned responsibilities with high standards of performance, quality, integrity, and discipline.</li>
+        <li>In this role, the company will provide hardware equipment / design software. When necessary, you will be given access to licensed / web-based software. You are required to use the access only for Company purposes.</li>
+        <li>You shall, while in the services of the firm, be responsible for delivering the projects assigned to you on time. You will be expected to work with the team toward the Firm&#39;s goals.</li>
+        <li>You shall be obliged to follow the work processes, technical standards, protocols and general instructions issued thereto, and service rules of the Firm as in force and/or amended from time to time.</li>
+        <li>The Company expects all employees to cooperate in day-to-day operations, and it is an essential feature of this job that you will be expected to work additional hours from time to time to meet business / operational needs. The additional hours may involve working weekends or Public Holidays.</li>
+        <li>Poaching of B&amp;Y Technologies clients or its Partners will not be tolerated while in service of B&amp;Y Technologies and within 2 years of exiting B&amp;Y Technologies as an employee.</li>
+        <li>Any intellectual property created by the employee during the course of employment will be the property of the company. The employee agrees to assign any right, title, and interest in such work to the company.</li>
+        <li>Freelancing or engaging in any independent work with any of the Company&#39;s clients or via their connections will not be tolerated while in service of the Company and within two years of exiting the Company as an employee.</li>
+        <li>Upon termination of employment, you will also return all firm property, which may be in your possession including intellectual property and artworks.</li>
+        <li>It would be obligatory on your part to get a proper relieving letter from the Management before your services are deemed to be concluded. On mutual agreement between the firm and the employee, there will be a one-month notice.</li>
+      </ol>
+    </div>
+
+    
+    <div style="margin-top: auto; padding-top: 10px; position: relative; z-index: 1;">
+      <div style="font-size: 8pt; color: #555555; text-align: center; font-family: 'Calibri', Arial, sans-serif; line-height: 1.4;">
+        <span style="margin: 0 8px;">🌐 www.bnytechnologies.com</span> &bull;
+        <span style="margin: 0 8px;">📞 9941070555</span> &bull;
+        <span style="margin: 0 8px;">✉️ hr@bnytechnologies.in</span> &bull;
+        <span style="margin: 0 8px;">📍 No : 624 Khivraj Building 4th floor, Anna Salai Chennai-600006</span>
+      </div>
+      <div style="width: 100%; height: 5px; background: linear-gradient(90deg, #19385C 0%, #19385C 62%, #A2FC4B 62%, #A2FC4B 100%); margin-top: 8px; border-radius: 2px;"></div>
+    </div>
+  
+  </div>
+
+  <br clear="all" style="mso-special-character:line-break;page-break-before:always" />
+
+  <!-- ==================== PAGE 3: CODE OF CONDUCT & ACCEPTANCE ==================== -->
+  <div class="page-container">
+    
+    <div style="position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%) rotate(-32deg); font-family: 'Georgia', serif; font-size: 110pt; font-weight: bold; color: #19385C; opacity: 0.038; letter-spacing: 14px; pointer-events: none; z-index: 0; user-select: none;">
+      B&amp;Y
+    </div>
+  
+    
+    <div style="position: relative; margin-bottom: 22px; padding-bottom: 12px; border-bottom: 1.5pt solid #E2EAD6;">
+      <div style="position: absolute; top: -14mm; right: -16mm; width: 130px; height: 70px; overflow: hidden; pointer-events: none; z-index: 2;">
+        
+    <svg width="130" height="70" viewBox="0 0 130 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <polygon points="35,0 130,0 130,70 65,70" fill="#19385C" />
+      <polygon points="0,0 55,0 108,70 52,70" fill="#A2FC4B" />
+    </svg>
+  
+      </div>
+      <table style="width: 100%; border-collapse: collapse; position: relative; z-index: 1;">
+        <tr>
+          <td style="width: 65px; vertical-align: middle;">
+            <div style="position: relative; width: 58px; height: 58px; display: inline-block;">
+              <img src="data:image/png;base64,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" alt="B&amp;Y Logo" style="width: 58px; height: 58px; border-radius: 50%; display: block;" />
+              <span style="position: absolute; top: -2px; right: -6px; font-size: 9pt; font-weight: bold; color: #19385C; font-family: serif;">&reg;</span>
+            </div>
+          </td>
+          <td style="vertical-align: middle; padding-left: 12px;">
+            <div style="font-family: 'Georgia', serif; font-size: 20pt; font-weight: bold; color: #19385C; letter-spacing: 0.5px; line-height: 1.1;">
+              B&amp;Y Technologies
+            </div>
+            <div style="font-family: 'Georgia', serif; font-size: 9pt; font-style: italic; color: #606060; margin-top: 3px;">
+              Together, we&#39;ll grow your business
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  
+
+    <div style="position: relative; z-index: 1; flex: 1;">
+      <div style="font-family: 'Georgia', serif; font-size: 16pt; font-weight: bold; color: #1E518A; margin-bottom: 10px;">
+        Code of Conduct:
+      </div>
+
+      <ol class="terms-ol">
+        <li>In all other matters on disciplinary grounds or any other matter, you will be governed by the rules as in force or which may be enforced from time to time.</li>
+        <li>Your remuneration is purely a matter between yourself and the firm and has been arrived at based on your job, skills, specific background and professional merit. Accordingly, your salary and any changes made to it are strictly confidential; you shall treat such matters accordingly, and any breach thereof would be viewed very seriously.</li>
+        <li>You shall maintain proper discipline and dignity of your office and so shall deal with all matters.</li>
+        <li>You shall maintain and keep in your safe custody all intellectual property of our clients and keep a backup of all your work for B&amp;Y Technologies and its clients.</li>
+        <li>All intellectual property and artworks that you create for B&amp;Y Technologies and its clients will belong to B&amp;Y Technologies and should not be published elsewhere.</li>
+        <li>You shall inform the Firm of any changes in your personal data within 3 days of the occurrence of such change.</li>
+        <li>You shall inform the Firm / Management of any cash payments received on the spot as a first priority, failing which you will be held liable.</li>
+        <li>You shall be solely responsible for any issues that may arise between you and your previous employer or any other personal dealings will remain personal and the Firm or any of its personnel are not responsible for the same.</li>
+        <li>Salary comparison between colleagues will not be entertained and is prohibited.</li>
+        <li>Financial details of the Firm and projects the firm is working on should not be shared or discussed with outsiders of the firm.</li>
+        <li>The Firm has the right to terminate employment within any time from the date of joining without any notice period. This only happens if the Firm does not find your work or conduct suitable or in the firm&#39;s best interest.</li>
+        <li>After 3 months, if the Firm does not find your work or conduct suitable or in the best interest of the Firm, the termination notice period will be 2 weeks. At which point you are to return all intellectual property to the Firm.</li>
+        <li>In cases of Gross Misconduct, the Company has the right to terminate your employment and no notice pay will be due, any days worked up to your termination will be paid. No salary will be paid post this date.</li>
+        <li>Any notice required to be given to you shall be deemed to have been duly and properly given if delivered to you personally or sent by post to you at your address, as recorded in the Firm.</li>
+        <li><strong>As per company policy, 7 days&#39; salary will be kept on hold as a security / settlement period during the employee&#39;s separation process. The held salary will be released and credited to the employee after proper relieving from the firm, including completion of the required notice period, handover of responsibilities, return of company assets, and completion of all exit formalities. The payment will be processed along with the applicable salary / settlement cycle after successful completion of the relieving formalities.</strong></li>
+      </ol>
+
+      <div style="font-size: 9.2pt; color: #222222; margin: 12px 0 14px 0; font-weight: 500;">
+        In response to this communication of appointment, you are required to confirm your acceptance by signing this letter below.
+      </div>
+
+      <!-- PAGE 3 DUAL SIGNATURES -->
+      <div style="margin-top: 14px; padding-top: 8px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt;">
+          <tr>
+            <td style="width: 50%; vertical-align: top; padding-right: 15px;">
+              <div style="font-weight: bold; color: #19385C;">FOR B&amp;Y TECHNOLOGIES,</div>
+              <div style="margin-top: 30px; font-weight: bold; color: #111111; font-size: 10.5pt;">Babu B</div>
+              <div style="color: #444444; font-size: 9.5pt;">Branch Manager</div>
+            </td>
+            <td style="width: 50%; vertical-align: top; padding-left: 15px;">
+              <div style="color: #333333; margin-bottom: 10px;">Accept the above stated terms of employment,</div>
+              <div style="margin-bottom: 6px;"><strong>Name :</strong> Rohan Patel</div>
+              <div style="margin-bottom: 6px;"><strong>Signature :</strong> _____________________________</div>
+              <div><strong>D.O.J :</strong> 13/08/2020</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    
+    <div style="margin-top: auto; padding-top: 10px; position: relative; z-index: 1;">
+      <div style="font-size: 8pt; color: #555555; text-align: center; font-family: 'Calibri', Arial, sans-serif; line-height: 1.4;">
+        <span style="margin: 0 8px;">🌐 www.bnytechnologies.com</span> &bull;
+        <span style="margin: 0 8px;">📞 9941070555</span> &bull;
+        <span style="margin: 0 8px;">✉️ hr@bnytechnologies.in</span> &bull;
+        <span style="margin: 0 8px;">📍 No : 624 Khivraj Building 4th floor, Anna Salai Chennai-600006</span>
+      </div>
+      <div style="width: 100%; height: 5px; background: linear-gradient(90deg, #19385C 0%, #19385C 62%, #A2FC4B 62%, #A2FC4B 100%); margin-top: 8px; border-radius: 2px;"></div>
+    </div>
+  
+  </div>
+
+</body>
+</html>

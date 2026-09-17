@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>Appointment Letter - Krish Babu</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    @page {
+      size: 8.5in 11.0in;
+      margin: 1.0in 1.0in 1.0in 1.0in;
+      mso-header-margin: 0.5in;
+      mso-footer-margin: 0.5in;
+    }
+    body {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      color: #331E1E;
+      line-height: 1.6;
+      font-size: 11pt;
+      background-color: #ffffff;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      font-family: 'Georgia', serif;
+      color: #331E1E;
+      margin-bottom: 8px;
+    }
+    .header-table {
+      width: 100%;
+      border-bottom: 2pt solid #A2FC4B;
+      padding-bottom: 12px;
+      margin-bottom: 25px;
+    }
+    .brand-name {
+      font-size: 20pt;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #331E1E;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-size: 9pt;
+      color: #706161;
+      font-style: italic;
+    }
+    .badge {
+      display: inline-block;
+      background-color: #A2FC4B;
+      color: #331E1E;
+      padding: 4px 10px;
+      font-size: 9pt;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .section-title {
+      font-size: 13pt;
+      font-weight: bold;
+      color: #331E1E;
+      border-bottom: 1pt solid #E2EAD6;
+      padding-bottom: 4px;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      margin-bottom: 20px;
+    }
+    table.data-table th {
+      background-color: #331E1E;
+      color: #ffffff;
+      padding: 8px 12px;
+      font-size: 10pt;
+      text-align: left;
+    }
+    table.data-table td {
+      border: 1pt solid #E2EAD6;
+      padding: 8px 12px;
+      font-size: 10pt;
+    }
+    .signature-box {
+      margin-top: 50px;
+      width: 100%;
+    }
+    .signature-line {
+      border-top: 1pt solid #331E1E;
+      width: 200px;
+      margin-top: 40px;
+      font-size: 10pt;
+    }
+  </style>
+</head>
+<body>
+  <table class="header-table">
+    <tr>
+      <td>
+        <div class="brand-name">B &amp; Y TECHNOLOGIES</div>
+        <div class="brand-sub">Digital Marketing Agency &bull; Chennai &bull; India</div>
+      </td>
+      <td style="text-align: right;">
+        <span class="badge">OFFICIAL HR DOCUMENT</span>
+      </td>
+    </tr>
+  </table>
+
+  
+    <div style="text-align: right; font-size: 10pt; margin-bottom: 20px;">
+      <strong>Date:</strong> September 5, 2026<br>
+      <strong>Ref:</strong> BYT/HR/APPT/2026/BYT-101
+    </div>
+
+    <div style="margin-bottom: 20px;">
+      <strong>To:</strong><br>
+      <strong>Krish Babu</strong><br>
+      Employee ID: BYT-101<br>
+      Contact: 9941070555<br>
+      
+    </div>
+
+    <h2 style="text-align: center; margin-bottom: 20px;">LETTER OF APPOINTMENT</h2>
+
+    <p>Dear <strong>Krish Babu</strong>,</p>
+
+    <p>
+      On behalf of <strong>B &amp; Y Technologies</strong>, we are delighted to confirm your appointment for the position of 
+      <strong>General Manager</strong> in the <strong>Operations & Management</strong> department, effective from 
+      <strong>2020-08-13</strong>.
+    </p>
+
+    <div class="section-title">1. Role &amp; Responsibilities</div>
+    <p>
+      In your capacity as <strong>General Manager</strong>, you will report to the department head and executive management. 
+      You will be expected to perform the duties associated with your role diligently and contribute to client campaigns, strategic 
+      initiatives, and agency growth in alignment with our high performance benchmarks.
+    </p>
+
+    <div class="section-title">2. Place of Work &amp; Working Hours</div>
+    <p>
+      Your primary location of work will be the B &amp; Y Technologies Chennai Studio. Regular working hours are Monday through 
+      Saturday, 9:30 AM to 6:30 PM, with flexibility as required by project milestones and client deliverables.
+    </p>
+
+    <div class="section-title">3. Portal Login Credentials</div>
+    <p>
+      Your primary identifier for self-service portal access, attendance check-ins, and leave management is:
+    </p>
+    <table class="data-table" style="max-width: 400px;">
+      <tr>
+        <th style="width: 50%;">Portal Login ID</th>
+        <td><strong>BYT-101</strong></td>
+      </tr>
+      <tr>
+        <th>Designation</th>
+        <td>General Manager</td>
+      </tr>
+      <tr>
+        <th>Status</th>
+        <td>Active Permanent</td>
+      </tr>
+    </table>
+
+    <div class="section-title">4. Confidentiality &amp; IP Protection</div>
+    <p>
+      During and following your employment with B &amp; Y Technologies, you shall maintain strict confidentiality regarding all client 
+      data, ad accounts, creative assets, software codes, strategies, and agency business operations.
+    </p>
+
+    <p>We welcome you to the B &amp; Y Technologies team and look forward to a mutually rewarding association.</p>
+
+    <table class="signature-box">
+      <tr>
+        <td style="width: 50%;">
+          Sincerely,<br>
+          <strong>For B &amp; Y Technologies</strong>
+          <div class="signature-line">
+            <strong>Authorized Signatory</strong><br>
+            Human Resources &amp; Operations
+          </div>
+        </td>
+        <td style="width: 50%; text-align: right;">
+          <div style="display: inline-block; text-align: left;">
+            Accepted by:<br>
+            <strong>Krish Babu</strong>
+            <div class="signature-line">
+              <strong>Employee Signature</strong><br>
+              Date: ____________________
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  
+
+  <div style="margin-top: 40px; font-size: 8pt; color: #706161; text-align: center; border-top: 1pt solid #E2EAD6; padding-top: 10px;">
+    B &amp; Y Technologies &bull; Confidential &bull; For Internal &amp; Employee Use Only
+  </div>
+</body>
+</html>
