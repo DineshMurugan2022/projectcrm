@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "B&Y CRM Click-to-Call",
+  "version": "1.1",
+  "description": "Click any phone number on Google Search or web pages to dial directly via B&Y CRM",
+  "permissions": ["tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["main_world_script.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    }
+  ]
+}
