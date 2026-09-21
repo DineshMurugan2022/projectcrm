@@ -158,7 +158,7 @@ router.get('/sip-config', auth, (req, res) => {
   const userSipDomain = firstNonEmpty(req.user?.sipDomain?.toString());
 
   const domain = normalizeSipDomain(firstNonEmpty(userSipDomain, getSipEnv('SIP_DOMAIN'), 'sip2.cloud-connect.in'));
-  const registrar = normalizeSipDomain(firstNonEmpty(getSipEnv('SIP_REGISTRAR'), domain));
+  const registrar = normalizeSipDomain(firstNonEmpty(getSipEnv('SIP_REGISTRAR'), domain === 'sip2.cloud-connect.in' ? 'sip:sip2.cloud-connect.in:7065' : domain));
   const user = userSipUsername;
   const username = userSipUsername;
   const extension = userSipExtension;
