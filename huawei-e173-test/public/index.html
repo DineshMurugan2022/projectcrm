@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Huawei · Call desk</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<header><div class="brand"><span class="brand-icon">H</span><div>Call desk<small>HUAWEI E173</small></div></div><span id="connection" class="badge">● Disconnected</span></header>
+<main>
+<div class="heading"><div><p class="eyebrow">YOUR DESKTOP PHONE</p><h1>A little closer.<br>One call away.</h1></div><p>Make and receive calls through your Huawei modem.<br>Use your headset for clear, two-way audio.</p></div>
+<div id="error" role="alert" hidden></div>
+<div class="layout">
+<section class="card setup"><div class="section-head"><h2>Connection</h2><span>01</span></div>
+<p class="subtle">Choose your modem and headset.</p>
+<label for="control">Control port</label><select id="control"></select>
+<label for="voice">Voice port</label><select id="voice"></select>
+<label for="input">Microphone</label><select id="input"></select>
+<label for="output">Headphones / speaker</label><select id="output"></select>
+<label for="playback">Playback mode</label><select id="playback"><option value="low-latency">Low latency — recommended</option><option value="compatible">Compatible — delayed playback</option></select>
+<button id="connect" class="primary">Connect modem</button><button id="refresh" class="text-button">↻ Refresh devices</button>
+<button id="speakerTest" class="text-button">♫ Test speaker</button>
+<div class="note"><span class="dot"></span><p>Keep this app running to receive calls. Incoming calls are answered only when you press Answer.</p></div>
+</section>
+<section class="card dialer"><div class="section-head"><h2>Phone</h2><span>02</span></div>
+<div class="call-display" aria-live="polite"><span id="callState" class="badge">Ready when you are</span><div id="caller">Connect your modem</div><div id="duration">Enter a number to start a call</div></div>
+<label class="sr-only" for="number">Phone number</label><div class="number-wrap"><input id="number" type="tel" autocomplete="tel" placeholder="Enter phone number" maxlength="21"><button id="backspace" aria-label="Delete last digit">⌫</button></div>
+<div id="keypad" class="keypad" aria-label="Dial pad"></div>
+<div class="call-actions"><button id="dial" class="primary">↗ Call</button><button id="answer" class="primary" hidden>↙ Answer</button><button id="hangup" class="danger" disabled>Hang up</button></div>
+<button id="mute" class="text-button" disabled>Mute microphone</button>
+<div class="audio-status"><span id="audio">Audio off</span><progress id="micLevel" max="100" value="0" aria-label="Microphone level"></progress></div>
+<div class="audio-status"><span>Incoming voice</span><progress id="rxLevel" max="100" value="0" aria-label="Incoming voice level"></progress></div>
+<p class="subtle" id="stats">Audio starts when the call connects.</p>
+</section>
+<div class="right-column"><section class="card health"><div class="section-head"><h2>Modem health</h2><span>03</span></div><div id="health"><p class="subtle">Connect to check the SIM, network and voice support.</p></div><button id="diagnostics" class="text-button" disabled>↻ Run diagnostics</button></section>
+<section class="card recent"><div class="section-head"><h2>Recent calls</h2><span id="callCount">0</span></div><div id="history"><p class="subtle">Your calls will appear here.<br>History lasts for this app session.</p></div></section></div>
+</div>
+<details class="card logs"><summary>Modem activity <span>Live AT command log</span></summary><pre id="log"></pre></details>
+<footer><span>LOCAL CONNECTION · YOUR PC + YOUR MODEM</span><span>Voice · 8 kHz / 16-bit mono</span></footer>
+</main><script src="/app.js"></script></body></html>

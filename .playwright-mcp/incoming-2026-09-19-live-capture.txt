@@ -1,0 +1,144 @@
+MONITOR READY
+UI SIP Connection: Connected & Registered
+SIP Phone Dialer
+Connected & Registered
+1
+2
+3
+4
+5
+6
+7
+8
+9
+*
+0
+#
+📞
+Place Call
+🎲
+Shuffle Next Lead
+🕒
+
+CONSOLE Sat Sep 19 2026 12:13:31 GMT+0530 (India Standard Time) | sip.Transport | Transitioned from Connected to Disconnected
+CONSOLE [SIP] WebSocket Disconnected Error: WebSocket closed wss://sip2.cloud-connect.in:7443/ (code: 1006)
+    at _Transport.onWebSocketClose (http://localhost:3000/node_modules/.vite/deps/sip__js.js?v=d26636db:12419:45)
+    at WebSocket.<anonymous> (http://localhost:3000/node_modules/.vite/deps/sip__js.js?v=d26636db:12298:49)
+WEBSOCKET CLOSED 20000.94
+UI SIP Connection: Reconnecting...
+SIP Phone Dialer
+Reconnecting...
+1
+2
+3
+4
+5
+6
+7
+8
+9
+*
+0
+#
+📞
+Place Call
+🎲
+Shuffle Next Lead
+🕒
+
+CONSOLE Sat Sep 19 2026 12:13:33 GMT+0530 (India Standard Time) | sip.Transport | Transitioned from Disconnected to Connecting
+2026-09-19T06:43:33.392Z OUTGOING REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0
+To: <sip:102597701@sip2.cloud-connect.in>
+From: "701" <sip:102597701@sip2.cloud-connect.in>;tag=vcd5r19hft
+CSeq: 3 REGISTER
+Call-ID: fencqfjg5rj9a2m55uqg
+Contact: <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300
+2026-09-19T06:43:33.446Z INCOMING SIP/2.0 200 OK
+To: <sip:102597701@sip2.cloud-connect.in>;tag=cd4c.c9af6bb1e8c86aa93cee894e3601c9f1
+From: "701" <sip:102597701@sip2.cloud-connect.in>;tag=vcd5r19hft
+Call-ID: fencqfjg5rj9a2m55uqg
+CSeq: 3 REGISTER
+Contact: <sip:102597701@192.0.2.200;transport=ws;ob>;expires=1748;received="sip:49.204.117.17:9679;transport=wss", <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300;received="sip:49.204.117.17:9621;transport=wss"
+UI SIP Connection: Connected & Registered
+SIP Phone Dialer
+Connected & Registered
+1
+2
+3
+4
+5
+6
+7
+8
+9
+*
+0
+#
+📞
+Place Call
+🎲
+Shuffle Next Lead
+🕒
+
+2026-09-19T06:44:01.516Z OUTGOING REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0
+To: <sip:102597701@sip2.cloud-connect.in>
+From: "701" <sip:102597701@sip2.cloud-connect.in>;tag=vcd5r19hft
+CSeq: 4 REGISTER
+Call-ID: fencqfjg5rj9a2m55uqg
+Contact: *
+CONSOLE 📋 [SIP] Registration State: Unregistered
+UI SIP Connection: Unregistered
+SIP Phone Dialer
+Unregistered
+1
+2
+3
+4
+5
+6
+7
+8
+9
+*
+0
+#
+📞
+Place Call
+🎲
+Shuffle Next Lead
+🕒
+
+2026-09-19T06:45:12.865Z OUTGOING REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0
+To: <sip:102597701@sip2.cloud-connect.in>
+From: "701" <sip:102597701@sip2.cloud-connect.in>;tag=vcd5r19hft
+CSeq: 5 REGISTER
+Call-ID: fencqfjg5rj9a2m55uqg
+Contact: <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300
+CONSOLE 📋 [SIP] Registration State: Registered
+2026-09-19T06:45:12.906Z INCOMING SIP/2.0 200 OK
+To: <sip:102597701@sip2.cloud-connect.in>;tag=cd4c.39fa9f0401fe0aaba4f11fc853551cef
+From: "701" <sip:102597701@sip2.cloud-connect.in>;tag=vcd5r19hft
+Call-ID: fencqfjg5rj9a2m55uqg
+CSeq: 5 REGISTER
+Contact: <sip:102597701@192.0.2.200;transport=ws;ob>;expires=1774;received="sip:49.204.117.17:9679;transport=wss", <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300;received="sip:49.204.117.17:9621;transport=wss"
+UI SIP Connection: Connected & Registered
+SIP Phone Dialer
+Connected & Registered
+1
+2
+3
+4
+5
+6
+7
+8
+9
+*
+0
+#
+📞
+Place Call
+🎲
+Shuffle Next Lead
+🕒
+

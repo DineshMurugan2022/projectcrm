@@ -1,0 +1,80 @@
+{
+  "time": "2026-09-19T06:46:04.983Z",
+  "connected": true,
+  "registered": true,
+  "registrar": "sip:sip2.cloud-connect.in:7065",
+  "transport": "Connected",
+  "activeSession": null,
+  "traffic": [
+    {
+      "time": "12:11:28 PM",
+      "direction": "OUTGOING",
+      "summary": [
+        "REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0",
+        "CSeq: 2 REGISTER",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "Contact: <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300"
+      ]
+    },
+    {
+      "time": "12:11:28 PM",
+      "direction": "INCOMING",
+      "summary": [
+        "SIP/2.0 200 OK",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "CSeq: 2 REGISTER",
+        "Contact: <sip:102597701@192.0.2.200;transport=ws;ob>;expires=1747;received=\"sip:49.204.117.17:9679;transport=wss\", <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300;received=\"sip:49.204.117.17:10194;transport=wss\""
+      ]
+    },
+    {
+      "time": "12:13:33 PM",
+      "direction": "OUTGOING",
+      "summary": [
+        "REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0",
+        "CSeq: 3 REGISTER",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "Contact: <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300"
+      ]
+    },
+    {
+      "time": "12:13:33 PM",
+      "direction": "INCOMING",
+      "summary": [
+        "SIP/2.0 200 OK",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "CSeq: 3 REGISTER",
+        "Contact: <sip:102597701@192.0.2.200;transport=ws;ob>;expires=1748;received=\"sip:49.204.117.17:9679;transport=wss\", <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300;received=\"sip:49.204.117.17:9621;transport=wss\""
+      ]
+    },
+    {
+      "time": "12:14:01 PM",
+      "direction": "OUTGOING",
+      "summary": [
+        "REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0",
+        "CSeq: 4 REGISTER",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "Contact: *"
+      ]
+    },
+    {
+      "time": "12:15:12 PM",
+      "direction": "OUTGOING",
+      "summary": [
+        "REGISTER sip:sip2.cloud-connect.in:7065 SIP/2.0",
+        "CSeq: 5 REGISTER",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "Contact: <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300"
+      ]
+    },
+    {
+      "time": "12:15:12 PM",
+      "direction": "INCOMING",
+      "summary": [
+        "SIP/2.0 200 OK",
+        "Call-ID: fencqfjg5rj9a2m55uqg",
+        "CSeq: 5 REGISTER",
+        "Contact: <sip:102597701@192.0.2.200;transport=ws;ob>;expires=1774;received=\"sip:49.204.117.17:9679;transport=wss\", <sip:102597701@sip2.cloud-connect.in;transport=wss>;expires=300;received=\"sip:49.204.117.17:9621;transport=wss\""
+      ]
+    }
+  ]
+}
