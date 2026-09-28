@@ -15,10 +15,41 @@ function createServer(modem = new Modem()) {
     }
   });
   const server = http.createServer(async (req, res) => {
-    const json = (code, value) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
+    const origin = req.headers.origin;
     const host = req.headers.host;
+
+    // Check allowed origins for CORS
+    const isAllowedOrigin = !origin ||
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('http://127.0.0.1') ||
+      origin.startsWith('https://localhost') ||
+      origin.includes('vercel.app') ||
+      origin.includes('netlify.app') ||
+      origin.includes('cloud-connect.in') ||
+      (host && origin === `http://${host}`);
+
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': isAllowedOrigin && origin ? origin : '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, X-App-Token, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+      'Cache-Control': 'no-store'
+    };
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, corsHeaders);
+      res.end();
+      return;
+    }
+
+    const json = (code, value) => {
+      res.writeHead(code, { 'Content-Type': 'application/json', ...corsHeaders });
+      res.end(JSON.stringify(value));
+    };
+
     if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host || '')) return json(403, { error: 'Local connections only.' });
-    if (req.headers.origin && ![`http://${host}`].includes(req.headers.origin)) return json(403, { error: 'Origin rejected.' });
+    if (origin && !isAllowedOrigin) return json(403, { error: 'Origin rejected.' });
+
     const url = new URL(req.url, `http://${host}`);
     try {
       if (req.method === 'GET' && url.pathname === '/api/state') return json(200, { ...modem.snapshot(), token });
@@ -29,7 +60,11 @@ function createServer(modem = new Modem()) {
         return json(200, { ports, audio, audioError });
       }
       if (req.method === 'GET' && url.pathname === '/api/events') {
-        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Connection': 'keep-alive',
+          ...corsHeaders
+        });
         res.write(`data: ${JSON.stringify(modem.snapshot())}\n\n`);
         clients.add(res);
         const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000);
@@ -37,7 +72,9 @@ function createServer(modem = new Modem()) {
         return;
       }
       if (req.method === 'POST' && url.pathname.startsWith('/api/')) {
-        if (req.headers['x-app-token'] !== token) return json(403, { error: 'Reload this page before continuing.' });
+        if (req.headers['x-app-token'] !== token) {
+          return json(403, { error: 'Reload this page before continuing.' });
+        }
         let body = '';
         for await (const chunk of req) { body += chunk; if (body.length > 4096) return json(413, { error: 'Request too large.' }); }
         const data = JSON.parse(body || '{}');
@@ -59,7 +96,7 @@ function createServer(modem = new Modem()) {
       const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
       const file = files[url.pathname];
       if (req.method !== 'GET' || !file) return json(404, { error: 'Not found' });
-      res.writeHead(200, { 'Content-Type': file[1], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'" });
+      res.writeHead(200, { 'Content-Type': file[1], 'X-Content-Type-Options': 'nosniff', ...corsHeaders });
       res.end(fs.readFileSync(path.join(__dirname, 'public', file[0])));
     } catch (error) { json(400, { error: error.message }); }
   });
