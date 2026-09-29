@@ -15,9 +15,37 @@ let latestModemState = {
   stats: {},
   logs: [],
   history: [],
+  isHostOnline: false,
 };
 
+let ioRef = null;
+
+function getLatestState() {
+  const isHostAlive = activeGsmHost && (Date.now() - activeGsmHost.lastSeen < 15000);
+  return {
+    ...latestModemState,
+    isHostOnline: Boolean(isHostAlive),
+  };
+}
+
+async function executeAction(action, payload) {
+  if (!activeGsmHost || !activeGsmHost.socketId) {
+    throw new Error('GSM Modem Host is not online. Please run Start-GSM-Modem.bat on the modem PC.');
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Modem Host response timed out.')), 10000);
+    if (!ioRef) return reject(new Error('Socket.IO instance not initialized.'));
+    ioRef.to(activeGsmHost.socketId).emit('gsm:execute_action', { action, payload }, (res) => {
+      clearTimeout(timer);
+      if (res && res.error) reject(new Error(res.error));
+      else resolve(res || {});
+    });
+  });
+}
+
 const registerGsmHandlers = (io, socket) => {
+  ioRef = io;
+
   // 1. GSM Modem Host (the PC with USB dongle) registers itself
   socket.on('gsm:register_host', (initialState) => {
     activeGsmHost = {
@@ -29,7 +57,7 @@ const registerGsmHandlers = (io, socket) => {
       latestModemState = { ...latestModemState, ...initialState, isHostOnline: true };
     }
     console.log(`📡 [GSM Relay] Modem Host registered: socket ${socket.id}`);
-    io.emit('gsm:state_changed', { ...latestModemState, isHostOnline: true });
+    io.emit('gsm:state_changed', getLatestState());
   });
 
   // 2. Modem Host sends real-time state update (signal, call ringing, connected, AT log)
@@ -39,17 +67,13 @@ const registerGsmHandlers = (io, socket) => {
       activeGsmHost.lastSeen = Date.now();
       latestModemState = { ...latestModemState, ...newState, isHostOnline: true };
       // Broadcast state update to all CRM clients
-      io.emit('gsm:state_changed', { ...latestModemState, isHostOnline: true });
+      io.emit('gsm:state_changed', getLatestState());
     }
   });
 
   // 3. Any CRM client (Device B, C, Mobile, Vercel app) requests current GSM state
   socket.on('gsm:get_state', (callback) => {
-    const isHostAlive = activeGsmHost && (Date.now() - activeGsmHost.lastSeen < 15000);
-    const responseState = {
-      ...latestModemState,
-      isHostOnline: Boolean(isHostAlive),
-    };
+    const responseState = getLatestState();
     if (typeof callback === 'function') {
       callback(responseState);
     } else {
@@ -60,25 +84,9 @@ const registerGsmHandlers = (io, socket) => {
   // 4. Any CRM client sends an action (connect, disconnect, dial, hangup, answer, mute, diagnostics)
   socket.on('gsm:client_action', async (data, callback) => {
     const { action, payload } = data || {};
-    if (!activeGsmHost || !activeGsmHost.socketId) {
-      const err = { error: 'No GSM Modem Host is online. Please ensure Start-GSM-Modem is running on the modem PC.' };
-      if (typeof callback === 'function') callback(err);
-      return;
-    }
-
-    console.log(`📞 [GSM Relay] Action "${action}" requested by client ${socket.id} -> forwarding to host ${activeGsmHost.socketId}`);
-
-    // Request action from Modem Host with timeout
     try {
-      const response = await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('Modem Host response timed out.')), 10000);
-        io.to(activeGsmHost.socketId).emit('gsm:execute_action', { action, payload }, (res) => {
-          clearTimeout(timer);
-          resolve(res);
-        });
-      });
-
-      if (typeof callback === 'function') callback(response);
+      const result = await executeAction(action, payload);
+      if (typeof callback === 'function') callback(result);
     } catch (err) {
       if (typeof callback === 'function') callback({ error: err.message });
     }
@@ -96,9 +104,13 @@ const registerGsmHandlers = (io, socket) => {
         diagnostics: {},
         call: 'idle',
       };
-      io.emit('gsm:state_changed', { ...latestModemState, isHostOnline: false });
+      io.emit('gsm:state_changed', getLatestState());
     }
   });
 };
 
-module.exports = registerGsmHandlers;
+module.exports = {
+  registerGsmHandlers,
+  getLatestState,
+  executeAction,
+};

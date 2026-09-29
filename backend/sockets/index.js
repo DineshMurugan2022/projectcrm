@@ -7,7 +7,7 @@ const registerMessageHandlers = require("./messageHandlers");
 const registerLocationHandlers = require("./locationHandlers");
 const registerAppointmentHandlers = require("./appointmentHandlers");
 const registerChatHandlers = require("./chatHandlers");
-const registerGsmHandlers = require("./gsmHandlers");
+const { registerGsmHandlers } = require("./gsmHandlers");
 
 const setupSocketIO = (io) => {
     setIOInstance(io);
