@@ -146,6 +146,10 @@ const initializeServices = async () => {
     const setupSocketIO = require("./sockets");
     setupSocketIO(io);
 
+    // 5. Initialize GSM Modem Service directly inside backend
+    const gsmModemService = require("./services/gsmModemService");
+    gsmModemService.init(io);
+
     console.log('✅ All services initialized successfully');
   } catch (error) {
     console.error('🔥 CRITICAL: Service initialization failed:', error.message);
