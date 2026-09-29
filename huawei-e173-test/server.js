@@ -18,11 +18,14 @@ function createServer(modem = new Modem()) {
     const origin = req.headers.origin;
     const host = req.headers.host;
 
-    // Check allowed origins for CORS
+    // Check allowed origins for CORS — allow localhost, LAN IPs, and known cloud deployments
     const isAllowedOrigin = !origin ||
       origin.startsWith('http://localhost') ||
       origin.startsWith('http://127.0.0.1') ||
       origin.startsWith('https://localhost') ||
+      /^https?:\/\/192\.168\./.test(origin) ||
+      /^https?:\/\/10\./.test(origin) ||
+      /^https?:\/\/172\.(1[6-9]|2\d|3[01])\./.test(origin) ||
       origin.includes('vercel.app') ||
       origin.includes('netlify.app') ||
       origin.includes('cloud-connect.in') ||
@@ -33,6 +36,7 @@ function createServer(modem = new Modem()) {
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-App-Token, Authorization',
       'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Private-Network': 'true',
       'Cache-Control': 'no-store'
     };
 
@@ -47,8 +51,9 @@ function createServer(modem = new Modem()) {
       res.end(JSON.stringify(value));
     };
 
-    if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host || '')) return json(403, { error: 'Local connections only.' });
+    // Allow any host — server is now accessible on LAN
     if (origin && !isAllowedOrigin) return json(403, { error: 'Origin rejected.' });
+
 
     const url = new URL(req.url, `http://${host}`);
     try {
@@ -103,9 +108,32 @@ function createServer(modem = new Modem()) {
   return { server, modem };
 }
 if (require.main === module) {
+  const os = require('node:os');
   const { server, modem } = createServer();
   const port = Number(process.argv.find(arg => arg.startsWith('--port='))?.slice(7) || process.env.PORT || 3174);
-  server.listen(port, '127.0.0.1', () => console.log(`Huawei dialer: http://127.0.0.1:${port}`));
+
+  // Listen on all interfaces so LAN machines can connect
+  server.listen(port, '0.0.0.0', () => {
+    const nets = os.networkInterfaces();
+    const lanIPs = [];
+    for (const iface of Object.values(nets)) {
+      for (const addr of iface) {
+        if (addr.family === 'IPv4' && !addr.internal) lanIPs.push(addr.address);
+      }
+    }
+    console.log('============================================================');
+    console.log('  Huawei E173 GSM Modem Server Running');
+    console.log('============================================================');
+    console.log(`  Local:   http://127.0.0.1:${port}`);
+    if (lanIPs.length > 0) {
+      lanIPs.forEach(ip => console.log(`  Network: http://${ip}:${port}  <-- share this with other CRM users`));
+    }
+    console.log('============================================================');
+    console.log('  On other computers: open GSM Modem Setup in the CRM and');
+    console.log(`  enter the Network IP above in the "Modem Server IP" field.`);
+    console.log('============================================================');
+  });
+
   server.on('error', error => { console.error(error.message); process.exitCode = 1; });
   const shutdown = async () => { await modem.disconnect().catch(console.error); server.close(); process.exit(0); };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
