@@ -31,10 +31,12 @@ router.get('/huawei-modem', (req, res) => {
   const filename = isZip ? 'Huawei-Mobile-Partner-v23-Driver-Setup.zip' : 'Huawei-Mobile-Partner-Setup.exe';
   const contentType = isZip ? 'application/zip' : 'application/octet-stream';
 
+  const absPath = path.resolve(filePath);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Length', fs.statSync(absPath).size);
   res.setHeader('Cache-Control', 'public, max-age=86400'); // cache 1 day
-  res.sendFile(filePath);
+  res.sendFile(absPath);
 });
 
 // GET /api/drivers/info
