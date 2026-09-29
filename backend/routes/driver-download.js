@@ -6,35 +6,58 @@ const fs = require('fs');
 
 const router = express.Router();
 
-const DRIVER_FILE = path.join(__dirname, '../uploads/drivers/Huawei-Mobile-Partner-Driver.zip');
-const DRIVER_NAME = 'Huawei-Mobile-Partner-v23-Driver-Setup.zip';
+function getDriverFilePath() {
+  const candidates = [
+    path.join(__dirname, '../uploads/drivers/Huawei-Mobile-Partner-Driver.zip'),
+    path.join(process.cwd(), 'uploads/drivers/Huawei-Mobile-Partner-Driver.zip'),
+    path.join(process.cwd(), 'backend/uploads/drivers/Huawei-Mobile-Partner-Driver.zip'),
+    path.join(__dirname, '../../Huawei_Mobile_Partner_with_Voice_USSD(1)/latest Huawei Mobile Partner 23.009.09.01.983 with voice and ussd option/Setup.exe')
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
 
 // GET /api/drivers/huawei-modem
-// Returns the Huawei Mobile Partner driver ZIP as a file download
+// Returns the Huawei Mobile Partner driver installer as a file download
 router.get('/huawei-modem', (req, res) => {
-  if (!fs.existsSync(DRIVER_FILE)) {
+  const filePath = getDriverFilePath();
+  if (!filePath) {
     return res.status(404).json({ error: 'Driver file not found on server.' });
   }
-  res.setHeader('Content-Disposition', `attachment; filename="${DRIVER_NAME}"`);
-  res.setHeader('Content-Type', 'application/zip');
+
+  const isZip = filePath.endsWith('.zip');
+  const filename = isZip ? 'Huawei-Mobile-Partner-v23-Driver-Setup.zip' : 'Huawei-Mobile-Partner-Setup.exe';
+  const contentType = isZip ? 'application/zip' : 'application/octet-stream';
+
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', 'public, max-age=86400'); // cache 1 day
-  res.sendFile(DRIVER_FILE);
+  res.sendFile(filePath);
 });
 
 // GET /api/drivers/info
 // Returns metadata about available drivers
 router.get('/info', (req, res) => {
-  const exists = fs.existsSync(DRIVER_FILE);
+  const filePath = getDriverFilePath();
+  const exists = !!filePath;
   let size = 0;
+  let filename = 'Huawei-Mobile-Partner-v23-Driver-Setup.zip';
+
   if (exists) {
-    const stat = fs.statSync(DRIVER_FILE);
+    const stat = fs.statSync(filePath);
     size = stat.size;
+    if (filePath.endsWith('.exe')) {
+      filename = 'Huawei-Mobile-Partner-Setup.exe';
+    }
   }
+
   res.json({
     available: exists,
     name: 'Huawei Mobile Partner v23.009.09.01.983',
     description: 'Latest Huawei Mobile Partner with Voice and USSD support for E173 USB Modem',
-    filename: DRIVER_NAME,
+    filename,
     sizeMB: (size / (1024 * 1024)).toFixed(1),
     downloadUrl: '/api/drivers/huawei-modem',
   });
