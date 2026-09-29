@@ -37,6 +37,13 @@ function createServer(modem = new Modem()) {
       ioClient.on('gsm:execute_action', async ({ action, payload }, callback) => {
         console.log(`📞 [GSM Host] Action requested: ${action}`);
         try {
+          if (action === 'devices') {
+            const ports = await SerialPort.list();
+            let audio = [], audioError = '';
+            try { audio = require('naudiodon').getDevices(); } catch (err) { audioError = err.message; }
+            if (typeof callback === 'function') callback({ ports, audio, audioError });
+            return;
+          }
           const actions = {
             connect: () => modem.connect(payload),
             disconnect: () => modem.disconnect(),
