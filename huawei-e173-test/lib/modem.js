@@ -176,7 +176,7 @@ class Modem extends EventEmitter {
     const port = this.port;
     if (port?.isOpen) await new Promise(resolve => port.close(resolve));
     this.port = null;
-    this.update({ connected: false });
+    this.update({ connected: false, diagnostics: {} });
   }
 }
 module.exports = { Modem };
