@@ -14,6 +14,58 @@ function createServer(modem = new Modem()) {
       else client.write(`data: ${JSON.stringify(state)}\n\n`);
     }
   });
+
+  // Connect Socket.IO relay to central CRM backend
+  try {
+    let ioClientPkg;
+    try { ioClientPkg = require('socket.io-client'); }
+    catch { try { ioClientPkg = require('../backend/node_modules/socket.io-client'); } catch { ioClientPkg = null; } }
+
+    if (ioClientPkg) {
+      const backendUrl = process.env.BACKEND_URL || 'https://backend-4jwl.onrender.com';
+      const ioClient = ioClientPkg(backendUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 2000,
+      });
+
+      ioClient.on('connect', () => {
+        console.log(`🔌 [GSM Host] Connected to central CRM Relay at ${backendUrl}`);
+        ioClient.emit('gsm:register_host', modem.snapshot());
+      });
+
+      ioClient.on('gsm:execute_action', async ({ action, payload }, callback) => {
+        console.log(`📞 [GSM Host] Action requested: ${action}`);
+        try {
+          const actions = {
+            connect: () => modem.connect(payload),
+            disconnect: () => modem.disconnect(),
+            dial: () => modem.dial(payload?.number),
+            answer: () => modem.answer(),
+            hangup: () => modem.hangup(),
+            mute: () => modem.mute(payload?.muted),
+            diagnostics: () => modem.diagnose(),
+          };
+          if (actions[action]) {
+            await actions[action]();
+            if (typeof callback === 'function') callback(modem.snapshot());
+          } else {
+            if (typeof callback === 'function') callback({ error: `Unknown action: ${action}` });
+          }
+        } catch (err) {
+          if (typeof callback === 'function') callback({ error: err.message });
+        }
+      });
+
+      modem.on('state', state => {
+        if (ioClient && ioClient.connected) {
+          ioClient.emit('gsm:host_state_update', state);
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('⚠️ [GSM Host] Relay connect notice:', err.message);
+  }
   const server = http.createServer(async (req, res) => {
     const origin = req.headers.origin;
     const host = req.headers.host;
