@@ -20,6 +20,9 @@ class Modem extends EventEmitter {
     this.emit('state', this.snapshot());
   }
   async connect(settings) {
+    if (this.port && this.state.connected) {
+      return this.snapshot();
+    }
     if (this.port) throw new Error('Disconnect before changing modem settings.');
     if (!/^COM\d+$/i.test(settings.control) || !/^COM\d+$/i.test(settings.voice) || settings.control === settings.voice) throw new Error('Select two different COM ports.');
     this.settings = settings;
