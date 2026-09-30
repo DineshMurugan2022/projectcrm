@@ -138,9 +138,28 @@ class GsmModemService {
     }
   }
 
+  async resolvePorts(settings = {}) {
+    let { control, voice, input = '-1', output = '-1', playback = 'low-latency' } = settings;
+    if (!control || !voice) {
+      const ports = await SerialPort.list();
+      const findPort = (name) => ports.find(p => new RegExp(name, 'i').test(p.friendlyName || ''))?.path;
+      const huaweiVendor = ports.filter(p => p.vendorId?.toLowerCase() === '12d1' || /huawei/i.test(p.friendlyName || ''));
+      
+      control = control || findPort('PC UI') || huaweiVendor[0]?.path || ports[0]?.path;
+      voice = voice || findPort('Application') || huaweiVendor[1]?.path || ports[1]?.path || ports[0]?.path;
+    }
+    if (!control || !voice) {
+      throw new Error('No Huawei COM ports detected. Please plug in your Huawei USB modem.');
+    }
+    return { control, voice, input, output, playback };
+  }
+
   async executeAction(action, payload = {}) {
     const actions = {
-      connect:     () => this.modem.connect(payload),
+      connect:     async () => {
+        const settings = await this.resolvePorts(payload);
+        return this.modem.connect(settings);
+      },
       disconnect:  () => this.modem.disconnect(),
       dial:        () => this.modem.dial(payload.number),
       answer:      () => this.modem.answer(),

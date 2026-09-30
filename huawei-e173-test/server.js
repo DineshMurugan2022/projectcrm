@@ -15,6 +15,21 @@ function createServer(modem = new Modem()) {
     }
   });
 
+  async function resolveHuaweiPorts(settings = {}) {
+    let { control, voice, input = '-1', output = '-1', playback = 'low-latency' } = settings || {};
+    if (!control || !voice) {
+      const ports = await SerialPort.list();
+      const findPort = (name) => ports.find(p => new RegExp(name, 'i').test(p.friendlyName || ''))?.path;
+      const huaweiVendor = ports.filter(p => p.vendorId?.toLowerCase() === '12d1' || /huawei/i.test(p.friendlyName || ''));
+      control = control || findPort('PC UI') || huaweiVendor[0]?.path || ports[0]?.path;
+      voice = voice || findPort('Application') || huaweiVendor[1]?.path || ports[1]?.path || ports[0]?.path;
+    }
+    if (!control || !voice) {
+      throw new Error('No Huawei COM ports detected. Please plug in your Huawei USB modem.');
+    }
+    return { control, voice, input, output, playback };
+  }
+
   // Connect Socket.IO relay to central CRM backend
   try {
     let ioClientPkg;
@@ -45,7 +60,7 @@ function createServer(modem = new Modem()) {
             return;
           }
           const actions = {
-            connect: () => modem.connect(payload),
+            connect: async () => modem.connect(await resolveHuaweiPorts(payload)),
             disconnect: () => modem.disconnect(),
             dial: () => modem.dial(payload?.number),
             answer: () => modem.answer(),
@@ -143,7 +158,7 @@ function createServer(modem = new Modem()) {
         for await (const chunk of req) { body += chunk; if (body.length > 4096) return json(413, { error: 'Request too large.' }); }
         const data = JSON.parse(body || '{}');
         const actions = {
-          connect: () => modem.connect(data), disconnect: () => modem.disconnect(),
+          connect: async () => modem.connect(await resolveHuaweiPorts(data)), disconnect: () => modem.disconnect(),
           dial: () => modem.dial(data.number), answer: () => modem.answer(),
           hangup: () => modem.hangup(), mute: () => modem.mute(data.muted),
           diagnostics: () => modem.diagnose(),
