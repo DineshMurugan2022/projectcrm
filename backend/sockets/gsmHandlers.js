@@ -21,6 +21,16 @@ let latestModemState = {
 let ioRef = null;
 
 function getLatestState() {
+  try {
+    const gsmModemService = require('../services/gsmModemService');
+    const localStatus = gsmModemService.getStatus();
+    if (localStatus && localStatus.isHostOnline) {
+      return localStatus;
+    }
+  } catch {
+    /* ignore */
+  }
+
   const isHostAlive = activeGsmHost && (Date.now() - activeGsmHost.lastSeen < 15000);
   return {
     ...latestModemState,
@@ -29,8 +39,20 @@ function getLatestState() {
 }
 
 async function executeAction(action, payload) {
+  // 1. Try integrated backend gsmModemService first
+  try {
+    const gsmModemService = require('../services/gsmModemService');
+    const status = gsmModemService.getStatus();
+    if (status && status.isHostOnline) {
+      return await gsmModemService.executeAction(action, payload);
+    }
+  } catch {
+    /* fallback to relay */
+  }
+
+  // 2. Fall back to external Socket.IO host relay
   if (!activeGsmHost || !activeGsmHost.socketId) {
-    throw new Error('GSM Modem Host is not online. Please run Start-GSM-Modem.bat on the modem PC.');
+    throw new Error('GSM Modem is not available on this server. Please plug in your Huawei USB modem.');
   }
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Modem Host response timed out.')), 10000);
