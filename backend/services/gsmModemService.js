@@ -46,8 +46,11 @@ if (hardwareAvailable) {
   try {
     SerialPort = require('serialport').SerialPort;
   } catch {
-    // serialport native module not built on this platform
-    hardwareAvailable = false;
+    try {
+      SerialPort = require('../../huawei-e173-test/node_modules/serialport').SerialPort;
+    } catch {
+      hardwareAvailable = false;
+    }
   }
 }
 
@@ -114,8 +117,12 @@ class GsmModemService {
 
     try {
       audio = require('naudiodon').getDevices();
-    } catch (err) {
-      audioError = err.message;
+    } catch {
+      try {
+        audio = require('../../huawei-e173-test/node_modules/naudiodon').getDevices();
+      } catch (err) {
+        audioError = err.message;
+      }
     }
 
     return { ports, audio, audioError };
