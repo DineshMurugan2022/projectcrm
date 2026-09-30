@@ -118,6 +118,17 @@ class GsmModemService {
           relaySocket.emit('gsm:register_host', this.getStatus());
         });
 
+        // Send heartbeat every 5s to keep activeGsmHost.lastSeen fresh on Cloud Relay
+        const heartbeatTimer = setInterval(() => {
+          if (relaySocket && relaySocket.connected) {
+            relaySocket.emit('gsm:host_state_update', { ...this.getStatus(), isHostOnline: true });
+          }
+        }, 5000);
+
+        relaySocket.on('disconnect', () => {
+          clearInterval(heartbeatTimer);
+        });
+
         relaySocket.on('gsm:execute_action', async ({ action, payload }, callback) => {
           console.log(`📞 [GSM Modem Service] Remote Cloud Action: ${action}`);
           try {

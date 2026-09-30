@@ -31,7 +31,7 @@ function getLatestState() {
     /* ignore */
   }
 
-  const isHostAlive = activeGsmHost && (Date.now() - activeGsmHost.lastSeen < 15000);
+  const isHostAlive = activeGsmHost && (Date.now() - activeGsmHost.lastSeen < 45000);
   return {
     ...latestModemState,
     isHostOnline: Boolean(isHostAlive),
