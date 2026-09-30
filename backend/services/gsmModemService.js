@@ -88,6 +88,60 @@ class GsmModemService {
     console.log('📡 [GSM Modem Service] Integrated into backend server successfully');
     // Auto-detect connected Huawei COM ports on startup
     this.autoDetectPorts();
+    // Auto-connect cloud relay so live Vercel apps can access local USB modem
+    this.setupRemoteRelay();
+  }
+
+  setupRemoteRelay() {
+    try {
+      const relayUrl = process.env.REMOTE_RELAY_URL || process.env.BACKEND_URL || 'https://backend-4jwl.onrender.com';
+      if (!relayUrl || relayUrl.includes('localhost') || relayUrl.includes('127.0.0.1')) {
+        return;
+      }
+      let ioClientPkg;
+      try { ioClientPkg = require('socket.io-client'); }
+      catch {
+        try { ioClientPkg = require('../../huawei-e173-test/node_modules/socket.io-client'); }
+        catch { ioClientPkg = null; }
+      }
+
+      if (ioClientPkg) {
+        console.log(`🔌 [GSM Modem Service] Connecting Cloud Relay to ${relayUrl}...`);
+        const relaySocket = ioClientPkg(relayUrl, {
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionDelay: 2000,
+        });
+
+        relaySocket.on('connect', () => {
+          console.log(`📡 [GSM Modem Service] Connected & Registered with Cloud Relay at ${relayUrl}`);
+          relaySocket.emit('gsm:register_host', this.getStatus());
+        });
+
+        relaySocket.on('gsm:execute_action', async ({ action, payload }, callback) => {
+          console.log(`📞 [GSM Modem Service] Remote Cloud Action: ${action}`);
+          try {
+            if (action === 'devices') {
+              const devices = await this.getDevices();
+              if (typeof callback === 'function') callback(devices);
+              return;
+            }
+            const result = await this.executeAction(action, payload);
+            if (typeof callback === 'function') callback(result);
+          } catch (err) {
+            if (typeof callback === 'function') callback({ error: err.message });
+          }
+        });
+
+        this.modem.on('state', (state) => {
+          if (relaySocket && relaySocket.connected) {
+            relaySocket.emit('gsm:host_state_update', { ...state, isHostOnline: true });
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('⚠️ [GSM Modem Service] Cloud Relay notice:', err.message);
+    }
   }
 
   broadcastState() {
