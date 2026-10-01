@@ -1,0 +1,42 @@
+{
+  "name": "bnycrm-modem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portable Windows CRM with USB modem and native audio",
+  "author": "BNY CRM",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "scripts": {
+    "prepare:worker": "node build-worker.cjs",
+    "start": "npm run prepare:worker && electron .",
+    "dist": "npm run prepare:worker && electron-builder --win zip --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.bnycrm.modem",
+    "productName": "BNY CRM Modem",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bundle",
+        "to": "worker"
+      }
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": "zip",
+      "signAndEditExecutable": false,
+      "artifactName": "BNY-CRM-Modem-${version}-Windows.zip"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  }
+}
