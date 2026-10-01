@@ -1,6 +1,6 @@
-const { SerialPort } = require('serialport');
-const pa = require('naudiodon');
-const Speaker = require('speaker');
+const { SerialPort } = require('./dependencies')('serialport');
+const pa = require('./dependencies')('naudiodon');
+const Speaker = require('./dependencies')('speaker');
 
 function createSpeaker(output, mode = 'low-latency') {
   if (mode === 'low-latency') {

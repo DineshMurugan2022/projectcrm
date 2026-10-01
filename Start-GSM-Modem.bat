@@ -1,12 +1,13 @@
 @echo off
-title Huawei E173 GSM Modem Service (Port 3174)
-echo ============================================================
-echo   B^&Y CRM — Huawei E173 GSM Modem Service
-echo ============================================================
-echo.
-echo   Starting modem server on ALL network interfaces...
-echo   Other users on this network can connect using this PC's IP.
-echo.
-cd /d "%~dp0huawei-e173-test" 2>nul || cd /d "%~dp0"
+title CRM Personal Modem Agent
+cd /d "%~dp0huawei-e173-test"
+if not exist node_modules\socket.io-client (
+  echo Installing modem agent dependencies...
+  call npm install
+  if errorlevel 1 exit /b 1
+)
+echo Open http://127.0.0.1:3174 to see your pairing code.
+echo In CRM, open Call - GSM Modem Setup and paste that code.
+echo Keep this window running. Each user runs this on their own PC.
 node server.js --port=3174
 pause

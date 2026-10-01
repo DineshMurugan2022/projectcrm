@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { SerialPort } = require('serialport');
 const { Modem } = require('./lib/modem');
 
-function createServer(modem = new Modem()) {
+function createServer(modem = new Modem(), agent = null) {
   const token = crypto.randomBytes(24).toString('hex');
   const clients = new Set();
   modem.on('state', state => {
@@ -14,123 +14,25 @@ function createServer(modem = new Modem()) {
       else client.write(`data: ${JSON.stringify(state)}\n\n`);
     }
   });
-
-  async function resolveHuaweiPorts(settings = {}) {
-    let { control, voice, input = '-1', output = '-1', playback = 'low-latency' } = settings || {};
-    if (!control || !voice) {
-      const ports = await SerialPort.list();
-      const findPort = (name) => ports.find(p => new RegExp(name, 'i').test(p.friendlyName || ''))?.path;
-      const huaweiVendor = ports.filter(p => p.vendorId?.toLowerCase() === '12d1' || /huawei/i.test(p.friendlyName || ''));
-      control = control || findPort('PC UI') || huaweiVendor[0]?.path || ports[0]?.path;
-      voice = voice || findPort('Application') || huaweiVendor[1]?.path || ports[1]?.path || ports[0]?.path;
-    }
-    if (!control || !voice) {
-      throw new Error('No Huawei COM ports detected. Please plug in your Huawei USB modem.');
-    }
-    return { control, voice, input, output, playback };
-  }
-
-  // Connect Socket.IO relay to central CRM backend
-  try {
-    let ioClientPkg;
-    try { ioClientPkg = require('socket.io-client'); }
-    catch { try { ioClientPkg = require('../backend/node_modules/socket.io-client'); } catch { ioClientPkg = null; } }
-
-    if (ioClientPkg) {
-      const backendUrl = process.env.BACKEND_URL || 'https://backend-4jwl.onrender.com';
-      const ioClient = ioClientPkg(backendUrl, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 2000,
-      });
-
-      ioClient.on('connect', () => {
-        console.log(`🔌 [GSM Host] Connected to central CRM Relay at ${backendUrl}`);
-        ioClient.emit('gsm:register_host', modem.snapshot());
-      });
-
-      ioClient.on('gsm:execute_action', async ({ action, payload }, callback) => {
-        console.log(`📞 [GSM Host] Action requested: ${action}`);
-        try {
-          if (action === 'devices') {
-            const ports = await SerialPort.list();
-            let audio = [], audioError = '';
-            try { audio = require('naudiodon').getDevices(); } catch (err) { audioError = err.message; }
-            if (typeof callback === 'function') callback({ ports, audio, audioError });
-            return;
-          }
-          const actions = {
-            connect: async () => modem.connect(await resolveHuaweiPorts(payload)),
-            disconnect: () => modem.disconnect(),
-            dial: () => modem.dial(payload?.number),
-            answer: () => modem.answer(),
-            hangup: () => modem.hangup(),
-            mute: () => modem.mute(payload?.muted),
-            diagnostics: () => modem.diagnose(),
-          };
-          if (actions[action]) {
-            await actions[action]();
-            if (typeof callback === 'function') callback(modem.snapshot());
-          } else {
-            if (typeof callback === 'function') callback({ error: `Unknown action: ${action}` });
-          }
-        } catch (err) {
-          if (typeof callback === 'function') callback({ error: err.message });
-        }
-      });
-
-      modem.on('state', state => {
-        if (ioClient && ioClient.connected) {
-          ioClient.emit('gsm:host_state_update', state);
-        }
-      });
-    }
-  } catch (err) {
-    console.warn('⚠️ [GSM Host] Relay connect notice:', err.message);
-  }
   const server = http.createServer(async (req, res) => {
-    const origin = req.headers.origin;
+    const json = (code, value) => { res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
     const host = req.headers.host;
-
-    // Check allowed origins for CORS — allow localhost, LAN IPs, and known cloud deployments
-    const isAllowedOrigin = !origin ||
-      origin.startsWith('http://localhost') ||
-      origin.startsWith('http://127.0.0.1') ||
-      origin.startsWith('https://localhost') ||
-      /^https?:\/\/192\.168\./.test(origin) ||
-      /^https?:\/\/10\./.test(origin) ||
-      /^https?:\/\/172\.(1[6-9]|2\d|3[01])\./.test(origin) ||
-      origin.includes('vercel.app') ||
-      origin.includes('netlify.app') ||
-      origin.includes('cloud-connect.in') ||
-      (host && origin === `http://${host}`);
-
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': isAllowedOrigin && origin ? origin : '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-App-Token, Authorization',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Private-Network': 'true',
-      'Cache-Control': 'no-store'
-    };
-
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, corsHeaders);
-      res.end();
-      return;
-    }
-
-    const json = (code, value) => {
-      res.writeHead(code, { 'Content-Type': 'application/json', ...corsHeaders });
-      res.end(JSON.stringify(value));
-    };
-
-    // Allow any host — server is now accessible on LAN
-    if (origin && !isAllowedOrigin) return json(403, { error: 'Origin rejected.' });
-
-
+    if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host || '')) return json(403, { error: 'Local connections only.' });
+    if (req.headers.origin && ![`http://${host}`].includes(req.headers.origin)) return json(403, { error: 'Origin rejected.' });
     const url = new URL(req.url, `http://${host}`);
     try {
+      if (agent) {
+        if (req.method === 'GET' && url.pathname === '/api/pairing') return json(200, agent.status());
+        if (req.method === 'GET' && url.pathname === '/') {
+          res.writeHead(200, { 'Content-Type': 'text/html', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; frame-ancestors 'none'" });
+          return res.end('<!doctype html><html><head><title>CRM modem agent</title></head><body><h1>Connect your modem to CRM</h1><p>Open CRM → Call → GSM Modem Setup and paste this pairing code:</p><h2 id="code">Connecting...</h2><p id="status"></p><p>Keep this agent running and the CRM Call page open. Audio uses this PC’s microphone and headphones.</p><script src="/pairing.js"></script></body></html>');
+        }
+        if (req.method === 'GET' && url.pathname === '/pairing.js') {
+          res.writeHead(200, { 'Content-Type': 'text/javascript' });
+          return res.end("async function refresh(){try{const s=await(await fetch('/api/pairing')).json();document.getElementById('code').textContent=s.paired?'Paired to your CRM account':s.code;document.getElementById('status').textContent=s.error||(s.online?'Connected to '+s.backend:'Connecting to '+s.backend);}catch{document.getElementById('status').textContent='Agent offline';}} refresh();setInterval(refresh,2000);");
+        }
+        return json(403, { error: 'Use your signed-in CRM account to control this modem.' });
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') return json(200, { ...modem.snapshot(), token });
       if (req.method === 'GET' && url.pathname === '/api/devices') {
         const ports = await SerialPort.list();
@@ -139,11 +41,7 @@ function createServer(modem = new Modem()) {
         return json(200, { ports, audio, audioError });
       }
       if (req.method === 'GET' && url.pathname === '/api/events') {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Connection': 'keep-alive',
-          ...corsHeaders
-        });
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
         res.write(`data: ${JSON.stringify(modem.snapshot())}\n\n`);
         clients.add(res);
         const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000);
@@ -151,14 +49,12 @@ function createServer(modem = new Modem()) {
         return;
       }
       if (req.method === 'POST' && url.pathname.startsWith('/api/')) {
-        if (req.headers['x-app-token'] !== token) {
-          return json(403, { error: 'Reload this page before continuing.' });
-        }
+        if (req.headers['x-app-token'] !== token) return json(403, { error: 'Reload this page before continuing.' });
         let body = '';
         for await (const chunk of req) { body += chunk; if (body.length > 4096) return json(413, { error: 'Request too large.' }); }
         const data = JSON.parse(body || '{}');
         const actions = {
-          connect: async () => modem.connect(await resolveHuaweiPorts(data)), disconnect: () => modem.disconnect(),
+          connect: () => modem.connect(data), disconnect: () => modem.disconnect(),
           dial: () => modem.dial(data.number), answer: () => modem.answer(),
           hangup: () => modem.hangup(), mute: () => modem.mute(data.muted),
           diagnostics: () => modem.diagnose(),
@@ -175,41 +71,20 @@ function createServer(modem = new Modem()) {
       const files = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
       const file = files[url.pathname];
       if (req.method !== 'GET' || !file) return json(404, { error: 'Not found' });
-      res.writeHead(200, { 'Content-Type': file[1], 'X-Content-Type-Options': 'nosniff', ...corsHeaders });
+      res.writeHead(200, { 'Content-Type': file[1], 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'" });
       res.end(fs.readFileSync(path.join(__dirname, 'public', file[0])));
     } catch (error) { json(400, { error: error.message }); }
   });
   return { server, modem };
 }
 if (require.main === module) {
-  const os = require('node:os');
-  const { server, modem } = createServer();
+  const modem = new Modem();
+  const agent = require('./lib/agent').startAgent(modem);
+  const { server } = createServer(modem, agent);
   const port = Number(process.argv.find(arg => arg.startsWith('--port='))?.slice(7) || process.env.PORT || 3174);
-
-  // Listen on all interfaces so LAN machines can connect
-  server.listen(port, '0.0.0.0', () => {
-    const nets = os.networkInterfaces();
-    const lanIPs = [];
-    for (const iface of Object.values(nets)) {
-      for (const addr of iface) {
-        if (addr.family === 'IPv4' && !addr.internal) lanIPs.push(addr.address);
-      }
-    }
-    console.log('============================================================');
-    console.log('  Huawei E173 GSM Modem Server Running');
-    console.log('============================================================');
-    console.log(`  Local:   http://127.0.0.1:${port}`);
-    if (lanIPs.length > 0) {
-      lanIPs.forEach(ip => console.log(`  Network: http://${ip}:${port}  <-- share this with other CRM users`));
-    }
-    console.log('============================================================');
-    console.log('  On other computers: open GSM Modem Setup in the CRM and');
-    console.log(`  enter the Network IP above in the "Modem Server IP" field.`);
-    console.log('============================================================');
-  });
-
-  server.on('error', error => { console.error(error.message); process.exitCode = 1; });
-  const shutdown = async () => { await modem.disconnect().catch(console.error); server.close(); process.exit(0); };
+  server.listen(port, '127.0.0.1', () => console.log(`Huawei dialer: http://127.0.0.1:${port}`));
+  server.on('error', async error => { console.error(error.message); await agent.stop().catch(console.error); process.exitCode = 1; });
+  const shutdown = async () => { await agent.stop().catch(console.error); server.close(); process.exit(0); };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
 }
 module.exports = { createServer };

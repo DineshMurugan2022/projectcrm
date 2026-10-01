@@ -78,3 +78,19 @@ test('call ending during voice selection does not open audio', async () => {
   assert.equal(voices.length, 0);
   await modem.disconnect();
 });
+
+
+test('disconnect releases the port and audio even if hangup fails', async () => {
+  const { modem, voices } = fixture();
+  await modem.connect({ control: 'COM4', voice: 'COM5' });
+  const port = modem.port;
+  modem.activate(); await modem.audioTask;
+  modem.hangup = async () => { throw new Error('Hangup rejected'); };
+  await modem.disconnect();
+  assert.equal(port.isOpen, false);
+  assert.equal(voices[0].stopped, true);
+  assert.equal(modem.state.connected, false);
+  assert.equal(modem.state.call, 'idle');
+  assert.equal(modem.history.length, 1);
+  assert.ok(modem.history[0].id);
+});

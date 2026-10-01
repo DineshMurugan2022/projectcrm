@@ -1,34 +1,32 @@
-# Huawei Call desk
+# CRM USB modem calling
 
-A local interface for making and receiving calls through a Huawei E173 modem.
+## Normal use
 
-## Start
+1. Start the normal CRM backend on the Windows PC with the USB modem.
+2. Open CRM, sign in, and switch to **GSM**.
+3. Plug in the Huawei modem and click **Connect modem** in Modem Setup.
+4. Make calls or answer incoming calls from the GSM tab.
 
-Run `npm start`, then open http://127.0.0.1:3174. If dependencies are missing, run `npm install` first. Only one app can use the modem's COM ports at a time.
+No separate port 3174 server, batch launcher, or pairing code is used by the CRM. The backend scans ports every three seconds. Install the Huawei driver once and close other applications holding the modem ports. Serial and audio packages are already backend dependencies; install the backend dependencies normally. Keep the `huawei-e173-test/lib` source folder alongside `backend`.
 
-## Use
+The frontend must use this backend's API address. A cloud backend cannot access a modem plugged into a different PC. Audio uses the backend PC's microphone and headphones.
 
-1. Select the control port (COM4) and voice port (COM5).
-2. Select your microphone and headphones. Leave playback on **Low latency**. Use **Test speaker** to check the output.
-3. Click **Connect modem** and check the SIM and network status.
-4. Enter a number and press **Call**, or press **Answer** when an incoming call appears.
-5. Use **Mute microphone** and **Hang up** as needed.
+## One modem, one user
 
-Keep the server running to receive calls. Closing the browser does not end a call. Audio uses the Windows devices on this PC. Call history and activity logs are kept in memory; call audio is not recorded.
+Connect atomically assigns the backend PC's modem to the authenticated account. Other accounts see only “in use”; caller numbers, history and controls are private to the owner. Disconnect, logout, USB removal, or 90 seconds without the owner's Call page polling releases the modem (cleanup runs every three seconds). Keep the Call page open for incoming calls. After reinserting the modem, click Connect again.
 
-Compatible playback is available as a fallback, but adds about four seconds of buffering. If a COM port is busy, close other modem apps. Reconnect after a command timeout.
+This implementation supports one active modem per backend process. Each user who needs their own physical modem runs the backend on their own modem PC. Run one backend process on each modem PC; multiple processes must not compete for the same COM ports.
+
+Call history is saved under the owner's account with duplicate protection. Audio is not recorded. Abrupt process termination can lose an unfinished call record.
 
 ## Checks
 
-Run `npm test` for the five automated tests covering call state, serial responses, cleanup, input validation and HTTP request protection.
+From the CRM root:
 
-Real outgoing and incoming calls were tested on 28 September 2026 with the Huawei E1731 and Logitech headset. The user confirmed two-way speech and acceptable delay in low-latency mode. Other hardware and long-duration reliability have not been tested.
+```
+node --test backend/tests/gsm-local.cjs backend/tests/gsm-auth.cjs backend/tests/calls-regression.cjs
+npm test --prefix huawei-e173-test
+npm run build --prefix frontend
+```
 
-## Files
-
-- `server.js`: local HTTP server.
-- `lib/`: modem control and audio streaming.
-- `public/`: calling interface.
-- `tests/`: automated checks.
-
-To use a different HTTP port, run `node server.js --port=3175`.
+Hardware calls and two-way audio require testing with the actual modem, driver and SIM. The standalone test desk files are retained for development but are not started or used by the CRM backend.

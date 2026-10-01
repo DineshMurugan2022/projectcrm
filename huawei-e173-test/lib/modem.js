@@ -1,5 +1,6 @@
+const { randomUUID } = require('node:crypto');
 const { EventEmitter } = require('node:events');
-const { SerialPort } = require('serialport');
+const { SerialPort } = require('./dependencies')('serialport');
 
 class Modem extends EventEmitter {
   constructor({ Port = SerialPort, audioFactory } = {}) {
@@ -157,7 +158,7 @@ class Modem extends EventEmitter {
   endCall(reason) {
     ++this.generation;
     if (this.state.call !== 'idle') {
-      this.history.unshift({ number: this.state.number, direction: this.state.direction, time: new Date().toISOString(), duration: this.state.since ? Math.floor((Date.now() - this.state.since) / 1000) : 0, result: reason });
+      this.history.unshift({ id: randomUUID(), answered: Boolean(this.state.since), number: this.state.number, direction: this.state.direction, time: new Date().toISOString(), duration: this.state.since ? Math.floor((Date.now() - this.state.since) / 1000) : 0, result: reason });
       this.history = this.history.slice(0, 20);
     }
     const voice = this.voice;
@@ -172,7 +173,10 @@ class Modem extends EventEmitter {
   }
   async disconnect() {
     clearInterval(this.poll);
-    if (this.port?.isOpen && this.state.call !== 'idle') await this.hangup();
+    if (this.port?.isOpen && this.state.call !== 'idle') {
+      // Always release serial/audio resources, even when the modem rejects hangup.
+      await this.hangup().catch(error => this.log(error.message));
+    }
     this.endCall('Disconnected');
     await this.audioTask;
     await this.audioStop;
