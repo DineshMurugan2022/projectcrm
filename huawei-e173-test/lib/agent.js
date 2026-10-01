@@ -5,12 +5,12 @@ const { selectPorts } = require('./ports');
 
 function startAgent(modem, { backendUrl = process.env.BACKEND_URL || 'https://backend-4jwl.onrender.com',
   io = require('socket.io-client').io, listPorts = () => SerialPort.list(),
-  audioDevices = () => require('naudiodon').getDevices(), scanInterval = 3000, onCode = console.log } = {}) {
+  audioDevices = () => require('naudiodon').getDevices(), scanInterval = 3000, onCode = console.log, ticket = null } = {}) {
   const url = new URL(backendUrl);
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))) {
     throw new Error('BACKEND_URL must use HTTPS (HTTP is allowed for localhost development).');
   }
-  const socket = io(`${url.origin}/gsm-agent`, { transports: ['websocket'], reconnection: false, autoConnect: false });
+  const socket = io(`${url.origin}/${ticket ? 'gsm-desktop' : 'gsm-agent'}`, { transports: ['websocket'], reconnection: false, autoConnect: false });
   let paired = false, stopped = false, busy = false, reconnectTimer, code = '', autoConnect = true;
   let devices = { ports: [], audio: [], audioError: '' }, lastError = '', settings = {};
   let queue = Promise.resolve();
@@ -30,6 +30,7 @@ function startAgent(modem, { backendUrl = process.env.BACKEND_URL || 'https://ba
   };
   const reconnect = () => {
     if (stopped) return;
+    if (ticket) { socket.auth = { ticket }; socket.connect(); return; }
     code = crypto.randomBytes(12).toString('hex').toUpperCase();
     socket.auth = { pairingCode: code };
     onCode(`CRM pairing code: ${code.match(/.{1,4}/g).join('-')}`);
@@ -39,12 +40,12 @@ function startAgent(modem, { backendUrl = process.env.BACKEND_URL || 'https://ba
   socket.on('connect_error', error => {
     lastError = `Cannot reach CRM backend: ${error.message}`;
     clearTimeout(reconnectTimer);
-    if (!stopped) reconnectTimer = setTimeout(reconnect, 5000);
+    if (!stopped && !ticket) reconnectTimer = setTimeout(reconnect, 5000);
   });
   socket.on('disconnect', () => {
     paired = false;
     serial(clearSession).finally(() => {
-      if (!stopped) reconnectTimer = setTimeout(reconnect, 2000);
+      if (!stopped && !ticket) reconnectTimer = setTimeout(reconnect, 2000);
     });
   });
   socket.on('gsm:paired', () => { paired = true; autoConnect = true; report(); });
@@ -108,7 +109,7 @@ function startAgent(modem, { backendUrl = process.env.BACKEND_URL || 'https://ba
   const timer = setInterval(tick, scanInterval);
   reconnect(); tick();
   return {
-    status: () => ({ code: paired ? '' : code.match(/.{1,4}/g)?.join('-'), paired, online: socket.connected, backend: url.origin, error: lastError }),
+    status: () => ({ code: paired ? '' : code.match(/.{1,4}/g)?.join('-'), paired, online: socket.connected, backend: url.origin, error: lastError, ports: devices.ports.map(p => p.friendlyName || p.path), modemConnected: modem.state.connected }),
     stop: async () => {
       stopped = true; paired = false; clearInterval(timer); clearTimeout(reconnectTimer);
       await serial(() => modem.disconnect()); report(); socket.disconnect(); modem.off('state', report);
