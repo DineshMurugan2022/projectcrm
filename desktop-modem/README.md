@@ -44,7 +44,7 @@ This backend registry is in memory: keep one Render backend process/instance, as
 The desktop app requires both website and backend updates:
 
 - Frontend repository: `DineshMurugan2022/nothing`, commit `a9c7bc8`. Vercel production deployment was verified Ready at `bnycrm1.vercel.app`.
-- Render backend repository: `DineshMurugan2022/backend`, branch `main`, commit `9da1daa`. The modem update has been pushed to this repository. The development copy is also saved in `projectcrm` at `1d77201`. Render must deploy `9da1daa` before desktop connection can work.
+- Render backend repository: `DineshMurugan2022/backend`, branch `main`, commit `9da1daa`. The modem update has been pushed to this repository. The development copy is also saved in `projectcrm` at `1d77201`. Render deployed `9da1daa` successfully on October 1, 2026. An authenticated live connection using the packaged worker detected COM4/COM5 and connected the physical modem without an error. The test session was released afterward.
 - On Render, open service `backend-4jwl`, confirm repository `DineshMurugan2022/backend` and branch `main`, then deploy the latest commit if automatic deployment is disabled. This repository has `server.js` at its root: keep the Root Directory empty. Keep the existing database and JWT configuration. `ENABLE_MODEM=false` is appropriate on Render; USB processing happens in the app.
 
 ## Verified checks
@@ -54,7 +54,7 @@ The desktop app requires both website and backend updates:
 - The bundled runtime loaded serialport, naudiodon and speaker and detected COM4/COM5 plus 21 audio-device entries on the development PC.
 - The packaged app opened the live CRM login screen with its restricted bridge present and rejected an invalid ticket.
 
-Still required after Render deployment: connect the physical modem through the app, make an outgoing call, verify two-way audio, receive a call, unplug/replug, and verify another account cannot see/control it. No new live phone call has been placed during this work.
+The packaged worker connected the physical modem through the live backend successfully. Still required: make an outgoing call, verify two-way audio, receive a call, unplug/replug, and repeat isolation checks with two real accounts. No live phone call has been placed during this work.
 
 ## Build again
 
@@ -67,4 +67,7 @@ node desktop-modem/smoke.cjs
 ```
 
 `build-worker.cjs` bundles the currently tested Node executable and native modules together to avoid Electron/Node native ABI mismatches. Rebuild and retest the native dependencies before changing that runtime.
+
+
+The package build explicitly copies the worker dependencies and checks native module loading from the packaged folder. This catches missing dependencies before release.
 

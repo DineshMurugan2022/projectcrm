@@ -26,6 +26,13 @@
       {
         "from": "bundle",
         "to": "worker"
+      },
+      {
+        "from": "bundle/node_modules",
+        "to": "worker/node_modules",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "npmRebuild": false,
@@ -33,7 +40,8 @@
       "target": "zip",
       "signAndEditExecutable": false,
       "artifactName": "BNY-CRM-Modem-${version}-Windows.zip"
-    }
+    },
+    "afterPack": "./verify-package.cjs"
   },
   "devDependencies": {
     "electron": "^44.5.1",
