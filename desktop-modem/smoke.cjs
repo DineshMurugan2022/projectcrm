@@ -1,7 +1,7 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const exe = path.join(__dirname,'release','win-unpacked','BNY CRM Modem.exe');
+const exe = path.join(__dirname,'release','win-unpacked','BNY CRM.exe');
 const child = spawn(exe,['--remote-debugging-port=9337','--remote-debugging-address=127.0.0.1'],{windowsHide:true,stdio:'ignore'});
 let ws;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

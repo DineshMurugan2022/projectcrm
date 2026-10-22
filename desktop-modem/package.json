@@ -15,6 +15,15 @@
   "build": {
     "appId": "com.bnycrm.desktop",
     "productName": "BNY CRM",
+    "protocols": [
+      {
+        "name": "BNY CRM Phone Handler",
+        "schemes": [
+          "tel",
+          "callto"
+        ]
+      }
+    ],
     "publish": [
       {
         "provider": "github",

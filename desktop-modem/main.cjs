@@ -8,7 +8,19 @@ try {
   autoUpdater = require('electron-updater').autoUpdater;
 } catch {}
 const defaultOrigin = 'https://bnycrm1.vercel.app';
-const trustedOrigins = ['https://bnycrm1.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+const trustedOrigins = [
+  'https://bnycrm1.vercel.app',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+];
+if (process.env.CRM_URL) {
+  try {
+    const customOrigin = new URL(process.env.CRM_URL).origin;
+    if (!trustedOrigins.includes(customOrigin)) trustedOrigins.push(customOrigin);
+  } catch {}
+}
 
 function isTrustedOrigin(urlStr) {
   try {
@@ -67,6 +79,11 @@ function openPbxWindow() {
     }
   });
   pbxWindow.loadFile(path.join(__dirname, 'pbx.html'));
+  pbxWindow.webContents.on('did-finish-load', () => {
+    for (const item of ['ready', 'registration', 'incoming', 'outgoing', 'call', 'audio']) {
+      if (pbxSnapshot[item]) pbxWindow?.webContents.send('pbx:event', pbxSnapshot[item]);
+    }
+  });
   pbxWindow.on('closed', () => { pbxWindow = null; });
 }
 
@@ -156,8 +173,11 @@ function setupTray() {
 }
 
 function assertPbxFrame(event) {
+  if (pbxWindow && !pbxWindow.isDestroyed() && event.senderFrame === pbxWindow.webContents.mainFrame) {
+    return; // Authorized PBX mini dialer window
+  }
   const frameOrigin = new URL(event.senderFrame.url).origin;
-  const isCrm = window && event.senderFrame === window.webContents.mainFrame &&
+  const isCrm = window && !window.isDestroyed() && event.senderFrame === window.webContents.mainFrame &&
       isTrustedOrigin(frameOrigin);
   if (!isCrm) throw new Error('Untrusted PBX caller.');
 }
@@ -253,6 +273,10 @@ function forwardPbxEvent(message) {
     logDebug(`[DISPATCH TO CRM] Sending pbx:event ${message.type}`);
     window.webContents.send('pbx:event', message);
   }
+  if (pbxWindow && !pbxWindow.isDestroyed()) {
+    logDebug(`[DISPATCH TO PBX WINDOW] Sending pbx:event ${message.type}`);
+    pbxWindow.webContents.send('pbx:event', message);
+  }
 }
 
 function sendPbxCommand(command) {
@@ -317,10 +341,71 @@ function stopPbxEngine() {
   });
 }
 
+try {
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('tel', process.execPath, [path.resolve(process.argv[1])]);
+      app.setAsDefaultProtocolClient('callto', process.execPath, [path.resolve(process.argv[1])]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient('tel');
+    app.setAsDefaultProtocolClient('callto');
+  }
+} catch (err) {
+  logDebug(`[PROTOCOL SETUP ERROR] ${err?.message}`);
+}
+
+function extractTelNumber(args) {
+  if (!Array.isArray(args)) return null;
+  for (const arg of args) {
+    if (typeof arg === 'string') {
+      const match = arg.match(/^(?:tel|callto):(?:\/\/)?([^?]+)/i);
+      if (match && match[1]) {
+        const decoded = decodeURIComponent(match[1]).trim();
+        const clean = decoded.replace(/[^\d+*#]/g, '');
+        if (clean) return clean;
+      }
+    }
+  }
+  return null;
+}
+
+function handleIncomingTel(cleanNumber) {
+  if (!cleanNumber) return;
+  logDebug(`[TEL PROTOCOL] Handling incoming dial request: ${cleanNumber}`);
+  if (window && !window.isDestroyed()) {
+    if (window.isMinimized()) window.restore();
+    window.show();
+    window.focus();
+    window.webContents.send('tel:dial', cleanNumber);
+    window.webContents.executeJavaScript(`
+      try {
+        sessionStorage.setItem('pending_click_to_call', ${JSON.stringify(cleanNumber)});
+        window.dispatchEvent(new CustomEvent('tel-dial', { detail: { number: ${JSON.stringify(cleanNumber)} } }));
+        window.dispatchEvent(new CustomEvent('external-dial', { detail: { number: ${JSON.stringify(cleanNumber)} } }));
+        const u = new URL(window.location.href);
+        u.searchParams.set('number', ${JSON.stringify(cleanNumber)});
+        window.history.replaceState({}, '', u.toString());
+      } catch (e) {}
+    `).catch(() => {});
+  }
+}
+
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on('second-instance', () => { if (window) { window.show(); window.focus(); } });
-  app.whenReady().then(() => {
+  app.on('second-instance', (_event, commandLine) => {
+    if (window) {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+    }
+    const telNumber = extractTelNumber(commandLine);
+    if (telNumber) {
+      handleIncomingTel(telNumber);
+    }
+  });
+  function ensureWorker() {
+    if (worker && worker.connected) return worker;
     const resources = app.isPackaged ? path.join(process.resourcesPath, 'worker') : path.join(__dirname, 'bundle');
     worker = fork(path.join(resources, 'worker.cjs'), [], { execPath: path.join(resources, 'node.exe'),
       cwd: resources, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
@@ -330,8 +415,21 @@ else {
       clearTimeout(request.timer); pending.delete(result.id);
       result.error ? request.reject(new Error(result.error)) : request.resolve({ ok: true });
     });
-    const fail = () => { for (const request of pending.values()) { clearTimeout(request.timer); request.reject(new Error('Modem engine stopped. Reopen the app.')); } pending.clear(); };
-    worker.on('error', fail); worker.on('exit', fail);
+    const fail = () => {
+      for (const request of pending.values()) {
+        clearTimeout(request.timer);
+        request.reject(new Error('Modem engine disconnected.'));
+      }
+      pending.clear();
+      worker = null;
+    };
+    worker.on('error', fail);
+    worker.on('exit', fail);
+    return worker;
+  }
+  ensureWorker();
+
+  app.whenReady().then(() => {
     ipcMain.handle('pbx:get-config', async event => {
       assertPbxFrame(event);
       const config = await readPbxAccount();
@@ -358,11 +456,12 @@ else {
       const frameOrigin = new URL(event.senderFrame.url).origin;
       if (event.senderFrame !== window.webContents.mainFrame || !isTrustedOrigin(frameOrigin)) throw new Error('Untrusted page.');
       if (typeof ticket !== 'string' || ticket.length > 8192 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(ticket)) throw new Error('Invalid connection ticket.');
-      if (!worker.connected) throw new Error('Modem engine is unavailable.');
+      const activeWorker = ensureWorker();
+      if (!activeWorker || !activeWorker.connected) throw new Error('Modem engine is unavailable.');
       const id = crypto.randomUUID();
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => { pending.delete(id); reject(new Error('Modem connection timed out.')); }, 25000);
-        pending.set(id, { resolve, reject, timer }); worker.send({ type: 'connect', id, ticket });
+        pending.set(id, { resolve, reject, timer }); activeWorker.send({ type: 'connect', id, ticket });
       });
     });
     // Silent auto-grant for microphone and desktop notifications on trusted CRM origins
@@ -422,11 +521,23 @@ else {
       for (const item of ['ready', 'registration', 'incoming', 'outgoing', 'call', 'audio']) {
         if (pbxSnapshot[item]) window?.webContents.send('pbx:event', pbxSnapshot[item]);
       }
+      if (coldStartTel) {
+        window?.webContents.send('tel:dial', coldStartTel);
+      }
     });
 
+    const coldStartTel = extractTelNumber(process.argv);
     resolveStartUrl().then(targetUrl => {
-      logDebug(`[CRM START URL] Loading ${targetUrl}`);
-      window.loadURL(targetUrl);
+      let finalUrl = targetUrl;
+      if (coldStartTel) {
+        try {
+          const u = new URL(targetUrl);
+          u.searchParams.set('number', coldStartTel);
+          finalUrl = u.toString();
+        } catch {}
+      }
+      logDebug(`[CRM START URL] Loading ${finalUrl}`);
+      window.loadURL(finalUrl);
     });
 
     window.webContents.on('did-fail-load', (_event, code) => {
