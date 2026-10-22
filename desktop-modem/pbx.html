@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BNY CRM PBX Phone</title>
+  <style>
+    :root { color-scheme: light; font: 14px/1.45 "Segoe UI", Arial, sans-serif; color: #10233f; background: #f2f6fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 22px; }
+    .shell { max-width: 1040px; margin: auto; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    h1 { margin: 0; font-size: 23px; letter-spacing: -.3px; }
+    .caption { color: #62748b; margin-top: 3px; }
+    .connection { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: #e8edf4; color: #546579; font-weight: 600; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #98a5b5; }
+    .connection.online { color: #13784e; background: #e3f5ec; }
+    .connection.online .dot { background: #18a66c; box-shadow: 0 0 0 3px #c7eedb; }
+    .connection.busy { color: #97520c; background: #fff2dc; }
+    .connection.busy .dot { background: #ed9b21; }
+    .grid { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(380px, 1.15fr); gap: 18px; align-items: start; }
+    .card { background: #fff; border: 1px solid #dce5ef; border-radius: 15px; box-shadow: 0 7px 24px #23405d0b; padding: 20px; }
+    h2 { font-size: 16px; margin: 0 0 15px; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; color: #52667d; font-size: 12px; font-weight: 650; }
+    input { width: 100%; height: 39px; margin-top: 5px; border: 1px solid #ced9e6; border-radius: 8px; padding: 0 10px; font: inherit; color: #162a43; background: white; outline: none; }
+    input:focus { border-color: #3780dc; box-shadow: 0 0 0 3px #3780dc20; }
+    .wide { grid-column: 1 / -1; }
+    .hint { color: #79889a; font-size: 11px; font-weight: 400; margin-top: 4px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+    button { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font: 600 13px "Segoe UI", Arial, sans-serif; transition: filter .15s, transform .05s; }
+    button:hover:not(:disabled) { filter: brightness(.96); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: default; }
+    .primary { color: white; background: #1768cf; }
+    .neutral { color: #28415f; background: #eaf0f6; }
+    .danger { color: white; background: #d74343; }
+    .success { color: white; background: #159264; }
+    .number { color: #172c47; background: #f5f8fb; border: 1px solid #e1e8f0; font-size: 20px; font-weight: 500; height: 51px; }
+    .phone { display: flex; flex-direction: column; gap: 14px; }
+    .number-input { height: 55px; font-size: 23px; letter-spacing: .5px; text-align: center; }
+    .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .keypad small { display: block; color: #73859a; font-size: 9px; letter-spacing: 1px; margin-top: 1px; }
+    .call-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .call-actions button { min-height: 43px; }
+    .call-state { min-height: 43px; border-radius: 9px; padding: 11px 13px; background: #f4f7fa; color: #4d6078; font-weight: 600; }
+    .incoming { display: none; padding: 15px; border-radius: 11px; background: #e9f8f0; border: 1px solid #c7ecd8; }
+    .incoming.show { display: block; }
+    .incoming strong { display: block; color: #146f4b; font-size: 15px; margin-bottom: 2px; }
+    .incoming span { color: #526c62; }
+    .message { min-height: 19px; margin-top: 12px; color: #9b3b31; font-size: 12px; }
+    .saved { margin-top: 9px; color: #718298; font-size: 11px; }
+    .advanced { font-size: 12px; font-weight: 600; color: #41658b; cursor: pointer; margin: 15px 0 0; }
+    .footer { margin-top: 14px; text-align: center; color: #718298; font-size: 11px; }
+    @media (max-width: 760px) { body { padding: 14px; } .grid { grid-template-columns: 1fr; } header { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><h1>BNY CRM PBX Phone</h1><div class="caption">CloudConnect SIP over UDP · PC microphone and speakers</div></div>
+      <div id="connection" class="connection"><span class="dot"></span><span id="connectionText">Not connected</span></div>
+    </header>
+    <div class="grid">
+      <section class="card">
+        <h2>PBX account</h2>
+        <form id="accountForm" autocomplete="off">
+          <div class="fields">
+            <label class="wide">SIP server<input id="server" value="sip2.cloud-connect.in:7065" maxlength="255" required></label>
+            <label class="wide">Domain<input id="domain" value="sip2.cloud-connect.in:7065" maxlength="255" required></label>
+            <label>Username<input id="username" value="102597701" maxlength="128" required></label>
+            <label>Login / auth ID<input id="login" value="102597701" maxlength="128" required></label>
+            <label class="wide">Password<input id="password" type="password" maxlength="256" placeholder="Enter SIP password" autocomplete="new-password"></label>
+          </div>
+          <div class="hint">Transport is UDP, matching the MicroSIP account settings. The password is protected in this Windows user profile.</div>
+          <div class="buttons">
+            <button class="neutral" type="submit">Save account</button>
+            <button id="connectBtn" class="primary" type="button">Connect to PBX</button>
+            <button id="disconnectBtn" class="neutral" type="button" disabled>Disconnect</button>
+          </div>
+          <div id="saved" class="saved"></div>
+          <div id="accountMessage" class="message" role="status"></div>
+        </form>
+      </section>
+      <section class="card phone">
+        <h2>Phone</h2>
+        <div id="incoming" class="incoming" aria-live="assertive">
+          <strong>Incoming call</strong><span id="incomingNumber"></span>
+          <div class="buttons">
+            <button id="answerBtn" class="success" type="button">Answer</button>
+            <button id="rejectBtn" class="danger" type="button">Decline</button>
+          </div>
+        </div>
+        <input id="number" class="number-input" inputmode="tel" autocomplete="off" placeholder="Enter phone number">
+        <div class="keypad" id="keypad">
+          <button class="number" data-digit="1" type="button">1<small>&nbsp;</small></button>
+          <button class="number" data-digit="2" type="button">2<small>ABC</small></button>
+          <button class="number" data-digit="3" type="button">3<small>DEF</small></button>
+          <button class="number" data-digit="4" type="button">4<small>GHI</small></button>
+          <button class="number" data-digit="5" type="button">5<small>JKL</small></button>
+          <button class="number" data-digit="6" type="button">6<small>MNO</small></button>
+          <button class="number" data-digit="7" type="button">7<small>PQRS</small></button>
+          <button class="number" data-digit="8" type="button">8<small>TUV</small></button>
+          <button class="number" data-digit="9" type="button">9<small>WXYZ</small></button>
+          <button class="number" data-digit="*" type="button">*</button>
+          <button class="number" data-digit="0" type="button">0<small>+</small></button>
+          <button class="number" data-digit="#" type="button">#</button>
+        </div>
+        <div id="callState" class="call-state">Ready when the PBX account is connected.</div>
+        <div class="call-actions">
+          <button id="callBtn" class="success" type="button" disabled>Call</button>
+          <button id="hangupBtn" class="danger" type="button" disabled>Hang up</button>
+        </div>
+        <div id="callMessage" class="message" role="status"></div>
+      </section>
+    </div>
+    <div class="footer">Your PBX must allow this account to register and make/receive calls. Keep this app open to receive calls.</div>
+  </main>
+  <script src="pbx-renderer.js"></script>
+</body>
+</html>

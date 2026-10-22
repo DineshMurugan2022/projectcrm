@@ -22,6 +22,20 @@ The build is unsigned. It has not been signed with a Windows publisher certifica
 
 Open the app, sign in, plug in the modem, and click Connect. Use the normal GSM dial, answer, mute and hang-up controls. Keep the Call page and app open for incoming calls; minimising is fine. Closing the app ends modem access. No terminal, batch file, port 3174 webpage or local backend is needed.
 
+## PBX calling
+
+The Electron app also includes a native SIP phone for the CloudConnect PBX. Open **Phone → Open PBX Phone (UDP)** in the app menu, or press **Ctrl+Shift+P**.
+
+1. The account form is prefilled with the server and domain shown in the MicroSIP setup image. Confirm the SIP username and login, then enter the SIP password.
+2. Click **Save account**, then **Connect to PBX**. Wait for **Online · Registered**.
+3. Enter a number and click **Call**. Incoming calls open the phone window with **Answer** and **Decline** controls. Keep the CRM app running while you want to receive calls.
+
+This phone registers directly over UDP on port 7065 and uses the PC microphone and speakers. It matches the transport in the MicroSIP account settings. The existing hosted CRM Call page still uses its browser SIP connection over WSS on port 7443; use the PBX Phone window for this UDP account.
+
+The PBX password is encrypted with Windows protected storage in this Windows user profile. It is sent to the local SIP engine over a private process pipe and is not written to the app source or command line. The packaged PBX engine includes PJSIP 2.17 and its source archive/license for the GPL terms. Run `npm run build:pbx --prefix desktop-modem` to rebuild it when Visual Studio Build Tools 2022 is installed.
+
+The tracked frontend `.env` no longer contains a SIP password. Any credential that was previously stored there should be changed with the PBX provider before being used again.
+
 ## How the connection works
 
 - The live CRM authenticates the user and issues a modem-only ticket valid for 60 seconds.

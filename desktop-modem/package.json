@@ -8,19 +8,23 @@
   "main": "main.cjs",
   "scripts": {
     "prepare:worker": "node build-worker.cjs",
+    "build:pbx": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File build-pbx.ps1",
     "start": "npm run prepare:worker && electron .",
-    "dist": "npm run prepare:worker && electron-builder --win zip --x64 --publish never"
+    "dist": "npm run prepare:worker && electron-builder --win --x64 --publish never"
   },
   "build": {
-    "appId": "com.bnycrm.modem",
-    "productName": "BNY CRM Modem",
+    "appId": "com.bnycrm.desktop",
+    "productName": "BNY CRM",
     "directories": {
       "output": "release"
     },
     "files": [
       "main.cjs",
       "preload.cjs",
-      "package.json"
+      "pbx.html",
+      "pbx-renderer.js",
+      "package.json",
+      "assets/**/*"
     ],
     "extraResources": [
       {
@@ -33,13 +37,51 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "native",
+        "to": "pbx",
+        "filter": [
+          "bny-pbx-engine.exe",
+          "*.dll",
+          "PJSIP-LICENSE.txt",
+          "PJSIP-2.17-source.zip"
+        ]
+      },
+      {
+        "from": "pbx-engine",
+        "to": "pbx-source",
+        "filter": [
+          "pbx-engine.cpp",
+          "CMakeLists.txt",
+          "local-smoke.cjs",
+          "LICENSE.txt"
+        ]
+      },
+      {
+        "from": "build-pbx.ps1",
+        "to": "pbx-source/build-pbx.ps1"
       }
     ],
     "npmRebuild": false,
     "win": {
-      "target": "zip",
-      "signAndEditExecutable": false,
-      "artifactName": "BNY-CRM-Modem-${version}-Windows.zip"
+      "icon": "assets/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "artifactName": "BNY-CRM-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "installer.nsh",
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "BNY CRM",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "installerHeaderIcon": "assets/icon.ico"
     },
     "afterPack": "./verify-package.cjs"
   },

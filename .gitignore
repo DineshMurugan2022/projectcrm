@@ -60,4 +60,5 @@ pids/
 # Misc
 .cache/
 .parcel-cache/
+.playwright-mcp/
 Huawei_Mobile_Partner_with_Voice_USSD(1)/

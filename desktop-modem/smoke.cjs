@@ -8,7 +8,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
   let target;
   for(let i=0;i<80;i++){
-    try { const pages=await(await fetch('http://127.0.0.1:9337/json/list')).json(); target=pages.find(p=>p.type==='page'&&p.url.startsWith('https://bnycrm1.vercel.app')); if(target)break; }catch{}
+    try { const pages=await(await fetch('http://127.0.0.1:9337/json/list')).json(); target=pages.find(p=>p.type==='page'&&(p.url.startsWith('https://bnycrm1.vercel.app')||p.url.startsWith('http://localhost:3000')||p.url.startsWith('http://127.0.0.1:3000'))); if(target)break; }catch{}
     await sleep(500);
   }
   if(!target)throw new Error('App did not open the live CRM.');
