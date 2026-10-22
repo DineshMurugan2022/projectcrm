@@ -30,6 +30,7 @@ if (isPbxWindow) {
   });
 } else {
   // Expose safe APIs to the CRM web page
+  contextBridge.exposeInMainWorld('isDesktopApp', true);
   contextBridge.exposeInMainWorld('bnyModem', { connect: ticket => ipcRenderer.invoke('modem:connect', ticket) });
   contextBridge.exposeInMainWorld('bnyPbx', {
     ...pbxControls,
