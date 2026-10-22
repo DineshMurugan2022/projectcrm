@@ -1,8 +1,12 @@
-const { app, BrowserWindow, ipcMain, dialog, session, Menu, safeStorage, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, session, Menu, safeStorage, Notification, screen, Tray } = require('electron');
 const { fork, spawn } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
+let autoUpdater = null;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch {}
 const defaultOrigin = 'https://bnycrm1.vercel.app';
 const trustedOrigins = ['https://bnycrm1.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:3000'];
 
@@ -30,9 +34,126 @@ async function resolveStartUrl() {
   return defaultOrigin;
 }
 
-let window, worker, pbxEngine, quitting = false, pbxStopping = false;
+let window, pbxWindow, tray, worker, pbxEngine, quitting = false, pbxStopping = false;
 let pbxSnapshot = {};
 const pending = new Map();
+
+function openPbxWindow() {
+  if (pbxWindow && !pbxWindow.isDestroyed()) {
+    if (pbxWindow.isMinimized()) pbxWindow.restore();
+    pbxWindow.show();
+    pbxWindow.focus();
+    return;
+  }
+  const display = screen.getPrimaryDisplay();
+  const workArea = display.workAreaSize;
+  const pbxWidth = 420;
+  const pbxHeight = Math.min(720, Math.max(560, Math.round(workArea.height * 0.85)));
+  pbxWindow = new BrowserWindow({
+    width: pbxWidth,
+    height: pbxHeight,
+    minWidth: 360,
+    minHeight: 520,
+    title: 'BNY PBX Phone',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    autoHideMenuBar: true,
+    backgroundColor: '#0f172a',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true
+    }
+  });
+  pbxWindow.loadFile(path.join(__dirname, 'pbx.html'));
+  pbxWindow.on('closed', () => { pbxWindow = null; });
+}
+
+function setupAutoUpdater() {
+  if (!autoUpdater || !app.isPackaged) {
+    logDebug('[UPDATER] In development mode or unpackaged; skipping background update check.');
+    return;
+  }
+  try {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('checking-for-update', () => logDebug('[UPDATER] Checking GitHub releases for updates...'));
+    autoUpdater.on('update-available', info => {
+      logDebug(`[UPDATER] New update available: v${info.version}`);
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'BNY CRM Update Available',
+          body: `Version ${info.version} is downloading in the background.`
+        }).show();
+      }
+    });
+
+    autoUpdater.on('update-downloaded', info => {
+      logDebug(`[UPDATER] Update downloaded: v${info.version}`);
+      dialog.showMessageBox(window || null, {
+        type: 'info',
+        buttons: ['Restart & Install Now', 'Install on Exit'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'BNY CRM Update Ready',
+        message: `Version ${info.version} has been downloaded. Restart now to apply updates?`
+      }).then(choice => {
+        if (choice.response === 0) {
+          quitting = true;
+          autoUpdater.quitAndInstall();
+        }
+      });
+    });
+
+    autoUpdater.on('error', err => logDebug(`[UPDATER ERROR] ${err?.message || err}`));
+
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(e => logDebug(`[UPDATER CHECK FAILED] ${e.message}`));
+    }, 6000);
+
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    }, 3 * 60 * 60 * 1000);
+  } catch (err) {
+    logDebug(`[UPDATER SETUP ERROR] ${err?.message}`);
+  }
+}
+
+function setupTray() {
+  try {
+    const iconPath = path.join(__dirname, 'assets', 'icon.png');
+    tray = new Tray(iconPath);
+    const trayMenu = Menu.buildFromTemplate([
+      { label: 'Open BNY CRM', click: () => { window?.show(); window?.focus(); } },
+      { label: 'Open PBX Phone (Mini Dialer)', click: openPbxWindow },
+      { type: 'separator' },
+      { label: 'Check for Updates', click: () => {
+        if (autoUpdater && app.isPackaged) {
+          autoUpdater.checkForUpdates().catch(e => dialog.showErrorBox('Update Check', e.message));
+        } else {
+          dialog.showMessageBox(window || null, { type: 'info', message: 'Auto-updater is active in packaged builds.' });
+        }
+      }},
+      { type: 'separator' },
+      { label: 'Quit BNY CRM', click: () => { quitting = true; app.quit(); } }
+    ]);
+    tray.setToolTip('BNY CRM Telecaller Suite');
+    tray.setContextMenu(trayMenu);
+    tray.on('click', () => {
+      if (window?.isVisible()) {
+        if (window.isFocused()) window.hide();
+        else window.focus();
+      } else {
+        window?.show();
+        window?.focus();
+      }
+    });
+  } catch (err) {
+    logDebug(`[TRAY SETUP ERROR] ${err?.message}`);
+  }
+}
 
 function assertPbxFrame(event) {
   const frameOrigin = new URL(event.senderFrame.url).origin;
@@ -244,20 +365,57 @@ else {
         pending.set(id, { resolve, reject, timer }); worker.send({ type: 'connect', id, ticket });
       });
     });
+    // Silent auto-grant for microphone and desktop notifications on trusted CRM origins
     session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
       const currentUrl = contents.getURL();
-      const trusted = contents === window?.webContents && isTrustedOrigin(currentUrl);
-      if (!trusted || !['media', 'notifications'].includes(permission)) return callback(false);
-      dialog.showMessageBox(window, { type: 'question', buttons: ['Allow', 'Cancel'], defaultId: 1,
-        message: `Allow the CRM to use ${permission === 'media' ? 'your microphone/camera' : 'notifications'}?` }).then(result => callback(result.response === 0));
+      const isMain = contents === window?.webContents;
+      const trusted = isMain || isTrustedOrigin(currentUrl);
+      if (trusted && ['media', 'notifications'].includes(permission)) {
+        logDebug(`[PERMISSIONS] Auto-granted ${permission} to trusted origin ${currentUrl}`);
+        return callback(true);
+      }
+      callback(false);
     });
+
+    if (typeof session.defaultSession.setPermissionCheckHandler === 'function') {
+      session.defaultSession.setPermissionCheckHandler((contents, permission, requestingOrigin) => {
+        if (isTrustedOrigin(requestingOrigin) && ['media', 'notifications'].includes(permission)) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    // Responsive screen size calculation adapting to any monitor (1366x768, 1080p, 2K/4K)
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    const initialWidth = Math.min(1440, Math.max(1024, Math.round(screenWidth * 0.92)));
+    const initialHeight = Math.min(960, Math.max(660, Math.round(screenHeight * 0.90)));
+
     window = new BrowserWindow({
-      width: 1300,
-      height: 900,
+      width: initialWidth,
+      height: initialHeight,
+      minWidth: 980,
+      minHeight: 620,
+      center: true,
+      autoHideMenuBar: true, // Clean modern window frame (press Alt to access menu)
       title: 'BNY CRM',
       icon: path.join(__dirname, 'assets', 'icon.png'),
-      webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true }
+      backgroundColor: '#f8fafc',
+      show: false,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.cjs'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webSecurity: true
+      }
     });
+
+    window.once('ready-to-show', () => {
+      window.show();
+    });
+
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', (event, url) => { if (!isTrustedOrigin(url)) event.preventDefault(); });
     window.webContents.on('did-finish-load', () => {
@@ -265,24 +423,91 @@ else {
         if (pbxSnapshot[item]) window?.webContents.send('pbx:event', pbxSnapshot[item]);
       }
     });
+
     resolveStartUrl().then(targetUrl => {
       logDebug(`[CRM START URL] Loading ${targetUrl}`);
       window.loadURL(targetUrl);
     });
-    window.webContents.on('did-fail-load', (_event, code) => { if (code !== -3) dialog.showErrorBox('CRM unavailable', 'Check your internet connection, then reopen BNY CRM.'); });
+
+    window.webContents.on('did-fail-load', (_event, code) => {
+      if (code !== -3) {
+        dialog.showMessageBox(window, {
+          type: 'warning',
+          title: 'CRM Connection Notice',
+          message: 'Unable to connect to BNY CRM. Please check your internet connection.',
+          buttons: ['Retry', 'Quit'],
+          defaultId: 0
+        }).then(res => {
+          if (res.response === 0) {
+            resolveStartUrl().then(url => window.loadURL(url));
+          } else {
+            quitting = true;
+            app.quit();
+          }
+        });
+      }
+    });
+
+    // Minimize to System Tray when closing the main window so incoming calls are not missed
+    let hasShownTrayNotification = false;
+    window.on('close', event => {
+      if (!quitting) {
+        event.preventDefault();
+        window.hide();
+        if (Notification.isSupported() && !hasShownTrayNotification) {
+          hasShownTrayNotification = true;
+          new Notification({
+            title: 'BNY CRM is running in the background',
+            body: 'Incoming calls will continue to alert you. Right-click the system tray icon to exit.'
+          }).show();
+        }
+      }
+    });
+
     const menu = Menu.buildFromTemplate([
-      { label: 'File', submenu: [
-        { label: 'Open CRM', click: () => { window?.show(); window?.focus(); } },
-        { label: 'Reload Page', accelerator: 'Ctrl+R', click: () => { window?.webContents.reload(); } },
-        { label: 'Toggle Developer Tools', accelerator: 'Ctrl+Shift+I', click: () => { window?.webContents.toggleDevTools(); } },
-        { type: 'separator' },
-        { label: 'Switch to Localhost (3000)', click: () => { window?.loadURL('http://localhost:3000'); } },
-        { label: 'Switch to Live Vercel', click: () => { window?.loadURL('https://bnycrm1.vercel.app'); } },
-        { type: 'separator' },
-        { role: 'quit' }
-      ] }
+      {
+        label: 'File',
+        submenu: [
+          { label: 'Open CRM', click: () => { window?.show(); window?.focus(); } },
+          { label: 'Reload Page', accelerator: 'Ctrl+R', click: () => { window?.webContents.reload(); } },
+          { label: 'Toggle Developer Tools', accelerator: 'Ctrl+Shift+I', click: () => { window?.webContents.toggleDevTools(); } },
+          { type: 'separator' },
+          { label: 'Check for Updates...', click: () => {
+            if (autoUpdater && app.isPackaged) {
+              autoUpdater.checkForUpdates().catch(e => dialog.showErrorBox('Update Check', e.message));
+            } else {
+              dialog.showMessageBox(window, { type: 'info', message: 'Auto-updater is active in packaged production builds.' });
+            }
+          }},
+          { type: 'separator' },
+          { label: 'Switch to Localhost (3000)', click: () => { window?.loadURL('http://localhost:3000'); } },
+          { label: 'Switch to Live Vercel', click: () => { window?.loadURL('https://bnycrm1.vercel.app'); } },
+          { type: 'separator' },
+          { label: 'Exit BNY CRM', click: () => { quitting = true; app.quit(); } }
+        ]
+      },
+      {
+        label: 'Phone',
+        submenu: [
+          { label: 'Open PBX Phone (Mini Dialer)', accelerator: 'CmdOrCtrl+Shift+P', click: openPbxWindow },
+          { label: 'Reconnect PBX Engine', click: () => startPbxEngine().catch(e => logDebug(e.message)) }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      }
     ]);
     Menu.setApplicationMenu(menu);
+
+    setupTray();
+    setupAutoUpdater();
 
     // Auto-connect PBX engine on launch if account credentials exist
     readPbxAccount().then(config => {
@@ -291,12 +516,24 @@ else {
       }
     }).catch(() => {});
   });
+
   app.on('before-quit', () => {
-    if (quitting) return;
     quitting = true;
+    try { if (tray && !tray.isDestroyed()) tray.destroy(); } catch {}
     try { if (pbxEngine && !pbxEngine.killed) pbxEngine.kill(); } catch {}
     try { if (worker && !worker.killed) worker.kill(); } catch {}
   });
-  app.on('activate', () => { if (!window) return; window.show(); window.focus(); });
-  app.on('window-all-closed', () => app.quit());
+
+  app.on('activate', () => {
+    if (window) {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+    }
+  });
+
+  app.on('window-all-closed', () => {
+    // Keep app alive in tray unless explicitly quitting
+    if (quitting) app.quit();
+  });
 }
