@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, session, Menu, safeStorage, Notification, screen, Tray } = require('electron');
-const { fork, spawn } = require('node:child_process');
+const { fork, spawn, exec } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
@@ -209,9 +209,15 @@ async function savePbxAccount(input) {
   const current = await readPbxAccount();
   const submittedPassword = typeof input.password === 'string' ? input.password : '';
   if (submittedPassword.length > 256 || /[\r\n\0]/.test(submittedPassword)) throw new Error('The SIP password is invalid.');
+  const server = cleanSipField(input.server, 'SIP server');
+  let domain = cleanSipField(input.domain, 'SIP domain');
+  const serverColon = server.lastIndexOf(':');
+  if (serverColon > 0 && !domain.includes(':')) {
+    domain = `${domain}${server.slice(serverColon)}`;
+  }
   const config = {
-    server: cleanSipField(input.server, 'SIP server'),
-    domain: cleanSipField(input.domain, 'SIP domain'),
+    server,
+    domain,
     username: cleanSipField(input.username, 'SIP username'),
     login: cleanSipField(input.login, 'SIP login'),
     password: submittedPassword || current?.password || ''
@@ -335,9 +341,24 @@ function stopPbxEngine() {
     let settled = false;
     const finish = () => { if (settled) return; settled = true; clearTimeout(timer); resolve(); };
     child.once('close', finish);
-    const timer = setTimeout(() => { if (!child.killed) child.kill(); finish(); }, 5000);
-    try { if (child.stdin.writable) child.stdin.write('{"action":"shutdown"}\n'); else finish(); }
-    catch { child.kill(); finish(); }
+    const timer = setTimeout(() => {
+      try {
+        if (!child.killed) {
+          if (process.platform === 'win32' && child.pid) {
+            exec(`taskkill /F /T /PID ${child.pid}`, () => {});
+          } else {
+            child.kill();
+          }
+        }
+      } catch {}
+      finish();
+    }, 1000);
+    try {
+      if (child.stdin.writable) child.stdin.write('{"action":"shutdown"}\n');
+      else finish();
+    } catch {
+      finish();
+    }
   });
 }
 
@@ -378,16 +399,6 @@ function handleIncomingTel(cleanNumber) {
     window.show();
     window.focus();
     window.webContents.send('tel:dial', cleanNumber);
-    window.webContents.executeJavaScript(`
-      try {
-        sessionStorage.setItem('pending_click_to_call', ${JSON.stringify(cleanNumber)});
-        window.dispatchEvent(new CustomEvent('tel-dial', { detail: { number: ${JSON.stringify(cleanNumber)} } }));
-        window.dispatchEvent(new CustomEvent('external-dial', { detail: { number: ${JSON.stringify(cleanNumber)} } }));
-        const u = new URL(window.location.href);
-        u.searchParams.set('number', ${JSON.stringify(cleanNumber)});
-        window.history.replaceState({}, '', u.toString());
-      } catch (e) {}
-    `).catch(() => {});
   }
 }
 
@@ -540,6 +551,14 @@ else {
       window.loadURL(finalUrl);
     });
 
+    window.webContents.on('render-process-gone', (_event, details) => {
+      logDebug(`[RENDER CRASH] reason=${details?.reason}, reloading CRM...`);
+      resolveStartUrl().then(url => window.loadURL(url));
+    });
+    window.webContents.on('unresponsive', () => {
+      logDebug('[WINDOW UNRESPONSIVE]');
+    });
+
     window.webContents.on('did-fail-load', (_event, code) => {
       if (code !== -3) {
         dialog.showMessageBox(window, {
@@ -559,20 +578,10 @@ else {
       }
     });
 
-    // Minimize to System Tray when closing the main window so incoming calls are not missed
-    let hasShownTrayNotification = false;
-    window.on('close', event => {
-      if (!quitting) {
-        event.preventDefault();
-        window.hide();
-        if (Notification.isSupported() && !hasShownTrayNotification) {
-          hasShownTrayNotification = true;
-          new Notification({
-            title: 'BNY CRM is running in the background',
-            body: 'Incoming calls will continue to alert you. Right-click the system tray icon to exit.'
-          }).show();
-        }
-      }
+    // Close window and quit cleanly so reopening starts fresh and fast without hanging
+    window.on('close', () => {
+      quitting = true;
+      app.quit();
     });
 
     const menu = Menu.buildFromTemplate([
@@ -631,8 +640,24 @@ else {
   app.on('before-quit', () => {
     quitting = true;
     try { if (tray && !tray.isDestroyed()) tray.destroy(); } catch {}
-    try { if (pbxEngine && !pbxEngine.killed) pbxEngine.kill(); } catch {}
-    try { if (worker && !worker.killed) worker.kill(); } catch {}
+    try {
+      if (pbxEngine && !pbxEngine.killed) {
+        if (process.platform === 'win32' && pbxEngine.pid) {
+          exec(`taskkill /F /T /PID ${pbxEngine.pid}`, () => {});
+        } else {
+          pbxEngine.kill();
+        }
+      }
+    } catch {}
+    try {
+      if (worker && !worker.killed) {
+        if (process.platform === 'win32' && worker.pid) {
+          exec(`taskkill /F /T /PID ${worker.pid}`, () => {});
+        } else {
+          worker.kill();
+        }
+      }
+    } catch {}
   });
 
   app.on('activate', () => {
@@ -644,7 +669,6 @@ else {
   });
 
   app.on('window-all-closed', () => {
-    // Keep app alive in tray unless explicitly quitting
-    if (quitting) app.quit();
+    app.quit();
   });
 }

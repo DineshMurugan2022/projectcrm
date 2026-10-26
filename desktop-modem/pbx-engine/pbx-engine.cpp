@@ -20,6 +20,7 @@ std::string sip_domain;
 // We declare these globals so they persist beyond configure_account().
 static std::string g_id_uri;
 static std::string g_registrar_uri;
+static std::string g_proxy_uri;
 static std::string g_login;
 static std::string g_password_store;
 static std::string g_stun_server;
@@ -209,12 +210,12 @@ void emit_error(const std::string& message) {
 }
 
 bool configure_account(const std::map<std::string, std::string>& cfg) {
-    const std::string server = normalize_host(cfg.count("server") ? cfg.at("server") : "");
-    const std::string domain = normalize_host(cfg.count("domain") ? cfg.at("domain") : "");
+    const std::string raw_server = normalize_host(cfg.count("server") ? cfg.at("server") : "");
+    std::string raw_domain = normalize_host(cfg.count("domain") ? cfg.at("domain") : "");
     const std::string username = cfg.count("username") ? cfg.at("username") : "";
     const std::string login = cfg.count("login") ? cfg.at("login") : username;
     std::string password = cfg.count("password") ? cfg.at("password") : "";
-    if (server.empty() || username.empty() || login.empty() || password.empty()) {
+    if (raw_server.empty() || username.empty() || login.empty() || password.empty()) {
         emit_error("Enter the SIP server, username/login, and password.");
         return false;
     }
@@ -222,7 +223,14 @@ bool configure_account(const std::map<std::string, std::string>& cfg) {
         emit_error("SIP values contain an unsupported line break.");
         return false;
     }
-    sip_domain = domain.empty() ? server : domain;
+
+    const std::string server = raw_server;
+    // If server specifies a port (e.g. :7065) and domain has no port, inherit it so SIP URIs match
+    const size_t s_colon = server.rfind(':');
+    if (s_colon != std::string::npos && raw_domain.find(':') == std::string::npos && !raw_domain.empty()) {
+        raw_domain += server.substr(s_colon);
+    }
+    sip_domain = raw_domain.empty() ? server : raw_domain;
     if (sip_domain.empty()) {
         emit_error("Enter a SIP domain.");
         return false;
@@ -231,15 +239,25 @@ bool configure_account(const std::map<std::string, std::string>& cfg) {
     // Populate globals that pj_str() will point into (must outlive pjsua)
     g_id_uri = "sip:" + username + "@" + sip_domain;
     g_registrar_uri = "sip:" + server;
+    g_proxy_uri = "sip:" + server + ";lr";
     g_login = login;
     g_password_store = password;
     std::fill(password.begin(), password.end(), '\0');
 
-    // STUN host: strip port from server so stun: URI is valid
-    std::string server_host = server;
-    const size_t colon_pos = server_host.find(':');
-    if (colon_pos != std::string::npos) server_host.resize(colon_pos);
-    g_stun_server = "stun:" + server_host;
+    // STUN host: local testing needs no STUN; remote CloudConnect SIP server does not
+    // run STUN, so default to reliable public STUN stun.l.google.com:19302
+    const bool is_local = (server.find("127.0.0.1") != std::string::npos || server.find("localhost") != std::string::npos);
+    if (!is_local) {
+        if (cfg.count("stun") && !cfg.at("stun").empty()) {
+            std::string stun_host = cfg.at("stun");
+            if (stun_host.rfind("stun:", 0) == 0) stun_host.erase(0, 5);
+            g_stun_server = "stun:" + stun_host;
+        } else {
+            g_stun_server = "stun:stun.l.google.com:19302";
+        }
+    } else {
+        g_stun_server.clear();
+    }
 
     pjsua_config ua_cfg;
     pjsua_config_default(&ua_cfg);
@@ -250,8 +268,12 @@ bool configure_account(const std::map<std::string, std::string>& cfg) {
     ua_cfg.thread_cnt = 4;
     ua_cfg.max_calls = 4;
     // STUN for outgoing NAT traversal
-    ua_cfg.stun_srv_cnt = 1;
-    ua_cfg.stun_srv[0] = pj_str(const_cast<char*>(g_stun_server.c_str()));
+    if (!is_local && !g_stun_server.empty()) {
+        ua_cfg.stun_srv_cnt = 1;
+        ua_cfg.stun_srv[0] = pj_str(const_cast<char*>(g_stun_server.c_str()));
+    } else {
+        ua_cfg.stun_srv_cnt = 0;
+    }
 
     pjsua_logging_config log_cfg;
     pjsua_logging_config_default(&log_cfg);
@@ -301,6 +323,11 @@ bool configure_account(const std::map<std::string, std::string>& cfg) {
     acc_cfg.reg_uri = pj_str(const_cast<char*>(g_registrar_uri.c_str()));
     acc_cfg.reg_timeout = 300;
     acc_cfg.ka_interval = 15;  // NAT keepalive every 15s
+
+    // Route all outgoing calls/requests through the SIP server/proxy with loose routing (;lr)
+    acc_cfg.proxy_cnt = 1;
+    acc_cfg.proxy[0] = pj_str(const_cast<char*>(g_proxy_uri.c_str()));
+
     acc_cfg.cred_count = 1;
     acc_cfg.cred_info[0].realm = pj_str(const_cast<char*>("*"));
     acc_cfg.cred_info[0].scheme = pj_str(const_cast<char*>("Digest"));

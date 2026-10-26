@@ -40,9 +40,7 @@ if (isPbxWindow) {
 
   ipcRenderer.on('tel:dial', (_event, number) => {
     try {
-      sessionStorage.setItem('pending_click_to_call', number);
       window.dispatchEvent(new CustomEvent('tel-dial', { detail: { number } }));
-      window.dispatchEvent(new CustomEvent('external-dial', { detail: { number } }));
     } catch (e) {}
   });
 
