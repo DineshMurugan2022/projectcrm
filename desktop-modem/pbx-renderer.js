@@ -202,7 +202,10 @@ function sanitizeNumber(value) {
 }
 
 byId('number').addEventListener('input', (event) => {
-  event.currentTarget.value = sanitizeNumber(event.currentTarget.value);
+  const sanitized = sanitizeNumber(event.currentTarget.value);
+  if (event.currentTarget.value !== sanitized) {
+    event.currentTarget.value = sanitized;
+  }
 });
 
 async function syncStatus() {
