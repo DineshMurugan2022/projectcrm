@@ -16,6 +16,7 @@ const pbxControls = {
   answer: () => ipcRenderer.invoke('pbx:answer'),
   reject: () => ipcRenderer.invoke('pbx:reject'),
   hangup: () => ipcRenderer.invoke('pbx:hangup'),
+  openMiniDialer: () => ipcRenderer.invoke('pbx:open-window'),
   onEvent: subscribeToPbx
 };
 

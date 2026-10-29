@@ -537,6 +537,11 @@ else {
       if (typeof compact !== 'boolean') throw new Error('Invalid telecaller window mode.');
       return setTelecallerWindowMode(compact);
     });
+    ipcMain.handle('pbx:open-window', event => {
+      assertMainCrmFrame(event);
+      openPbxWindow();
+      return { ok: true };
+    });
     ipcMain.handle('pbx:get-config', async event => {
       assertPbxFrame(event);
       const config = await readPbxAccount();

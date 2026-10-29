@@ -4,3 +4,4 @@ release/
 
 release-telecaller/
 test-exe-playwright.cjs
+test-minidialer.cjs
