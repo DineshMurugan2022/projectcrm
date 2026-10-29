@@ -4,6 +4,7 @@ let connected = false;
 let engineReady = false;
 let activeCall = false;
 let ringing = false;
+let pbxEventVersion = 0;
 
 function setConnection(label, state = '') {
   byId('connectionText').textContent = label;
@@ -54,10 +55,13 @@ function handleEvent(event) {
     setCallState('Waiting for PBX registration.', false);
   } else if (event.type === 'registration') {
     connected = event.registered === true;
-    const label = connected ? 'Online · Registered' : event.code ? `Registration failed · ${event.code}` : 'Connecting…';
-    setConnection(label, connected ? 'online' : 'busy');
-    if (!activeCall && !ringing) setCallState(connected ? 'Ready to make and receive calls.' : (event.message || 'Registering with the PBX.'), false);
-    if (!connected && event.code && event.code !== 100) showError('accountMessage', event.message || `PBX registration failed (${event.code}).`);
+    engineReady = true;
+    const code = Number(event.code) || 0;
+    const failed = !connected && code >= 300;
+    const label = connected ? 'Online · Registered' : failed ? `Registration failed · ${code}` : 'Registering…';
+    setConnection(label, connected ? 'online' : failed ? '' : 'busy');
+    if (!activeCall && !ringing) setCallState(connected ? 'Ready to make and receive calls.' : (event.message || (failed ? 'Check the PBX account and network.' : 'Registering with the PBX.')), false);
+    if (failed) showError('accountMessage', event.message || `PBX registration failed (${code}).`);
     else if (connected) showError('accountMessage', '');
   } else if (event.type === 'incoming') {
     ringing = true;
@@ -128,15 +132,26 @@ byId('connectBtn').addEventListener('click', async () => {
   showError('accountMessage', '');
   showError('callMessage', '');
   try {
-    const config = await api.saveConfig(readForm());
-    byId('password').value = '';
-    renderSaved(config);
-    await api.connect();
+    const config = readForm();
+    const stored = await api.getConfig();
+    const changedSavedAccount = stored?.hasPassword && (
+      config.server !== stored.server ||
+      config.domain !== stored.domain ||
+      config.username !== stored.username ||
+      config.login !== stored.login
+    );
+    if (config.password) {
+      renderSaved(await api.saveConfig(config));
+      byId('password').value = '';
+    } else if (!stored?.hasPassword || changedSavedAccount) {
+      throw new Error('Enter the SIP password to save or change this account.');
+    }
     engineReady = true;
-    setConnection('Starting SIP…', 'busy');
+    setConnection('Registering…', 'busy');
+    setCallState('Registering with CloudConnect PBX…', false);
+    await api.connect();
   } catch (error) {
-    engineReady = false;
-    setConnection('Not connected');
+    try { await syncStatus(); } catch { /* Keep the connection error visible below. */ }
     showError('accountMessage', error.message || 'Could not connect to the PBX.');
   }
 });
@@ -148,8 +163,8 @@ byId('disconnectBtn').addEventListener('click', async () => {
 byId('keypad').addEventListener('click', (event) => {
   const button = event.target.closest('button[data-digit]');
   if (button) {
-    byId('number').value += button.dataset.digit;
-    byId('number').focus();
+    const input = byId('number');
+    input.value = sanitizeNumber(input.value + button.dataset.digit);
   }
 });
 
@@ -179,5 +194,38 @@ byId('number').addEventListener('keydown', (event) => {
   if (event.key === 'Enter') { event.preventDefault(); byId('callBtn').click(); }
 });
 
-api.onEvent(handleEvent);
+function sanitizeNumber(value) {
+  const cleaned = String(value || '').replace(/[^\d+*#]/g, '').slice(0, 48);
+  const plus = cleaned.startsWith('+');
+  const body = cleaned.replace(/\+/g, '').slice(0, plus ? 47 : 48);
+  return plus ? `+${body}` : body;
+}
+
+byId('number').addEventListener('input', (event) => {
+  event.currentTarget.value = sanitizeNumber(event.currentTarget.value);
+});
+
+async function syncStatus() {
+  const snapshotVersion = pbxEventVersion;
+  const status = await api.getStatus();
+  if (snapshotVersion !== pbxEventVersion) return;
+  if (status.registration) {
+    handleEvent(status.registration);
+  } else if (status.engineRunning) {
+    engineReady = true;
+    setConnection('Registering…', 'busy');
+    setCallState('Waiting for PBX registration.', false);
+  } else {
+    engineReady = false;
+    connected = false;
+    setConnection('Not connected');
+    setCallState('Ready when the PBX account is connected.', false);
+  }
+}
+
+api.onEvent((event) => {
+  pbxEventVersion += 1;
+  handleEvent(event);
+});
+syncStatus().catch((error) => showError('accountMessage', error.message));
 api.getConfig().then(renderSaved).catch((error) => showError('accountMessage', error.message));

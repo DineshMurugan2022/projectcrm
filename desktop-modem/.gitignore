@@ -1,3 +1,6 @@
 node_modules/
 bundle/
 release/
+
+release-telecaller/
+test-exe-playwright.cjs

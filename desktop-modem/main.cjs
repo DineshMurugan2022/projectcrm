@@ -48,7 +48,73 @@ async function resolveStartUrl() {
 
 let window, pbxWindow, tray, worker, pbxEngine, quitting = false, pbxStopping = false;
 let pbxSnapshot = {};
+let pbxStartPromise = null;
+let telecallerWindowMode = false;
+let telecallerNormalBounds = null;
+let telecallerNormalMinSize = null;
+let mainWindowNormalMinSize = { width: 720, height: 500 };
+let compactOnRestore = false;
+let normalOnRestore = false;
 const pending = new Map();
+
+function getTelecallerCompactBounds() {
+  const display = screen.getDisplayMatching(window.getBounds());
+  const { x, y, width: workWidth, height: workHeight } = display.workArea;
+  const width = Math.min(420, Math.max(280, workWidth - 24));
+  const height = Math.min(700, Math.max(420, workHeight - 24));
+  return {
+    x: x + workWidth - width - 12,
+    y: y + 12,
+    width,
+    height,
+    minWidth: Math.min(360, width),
+    minHeight: Math.min(480, height)
+  };
+}
+
+function applyTelecallerCompactBounds() {
+  const bounds = getTelecallerCompactBounds();
+  window.setMinimumSize(bounds.minWidth, bounds.minHeight);
+  window.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+}
+
+function restoreTelecallerNormalBounds() {
+  if (telecallerNormalMinSize) {
+    window.setMinimumSize(telecallerNormalMinSize.width, telecallerNormalMinSize.height);
+  }
+  if (telecallerNormalBounds) {
+    window.setBounds(telecallerNormalBounds);
+  }
+  telecallerNormalBounds = null;
+  telecallerNormalMinSize = null;
+}
+
+function setTelecallerWindowMode(compact) {
+  if (!window || window.isDestroyed()) return { ok: false };
+  if (compact === telecallerWindowMode) return { ok: true, compact: telecallerWindowMode };
+
+  if (compact) {
+    telecallerNormalBounds = window.isMaximized() ? window.getNormalBounds() : window.getBounds();
+    telecallerNormalMinSize = { ...mainWindowNormalMinSize };
+    telecallerWindowMode = true;
+    normalOnRestore = false;
+    if (window.isMaximized()) {
+      compactOnRestore = true;
+    } else {
+      applyTelecallerCompactBounds();
+    }
+  } else {
+    telecallerWindowMode = false;
+    compactOnRestore = false;
+    if (window.isMaximized()) {
+      normalOnRestore = true;
+    } else {
+      normalOnRestore = false;
+      restoreTelecallerNormalBounds();
+    }
+  }
+  return { ok: true, compact: telecallerWindowMode };
+}
 
 function openPbxWindow() {
   if (pbxWindow && !pbxWindow.isDestroyed()) {
@@ -59,13 +125,13 @@ function openPbxWindow() {
   }
   const display = screen.getPrimaryDisplay();
   const workArea = display.workAreaSize;
-  const pbxWidth = 420;
-  const pbxHeight = Math.min(720, Math.max(560, Math.round(workArea.height * 0.85)));
+  const pbxWidth = Math.max(300, Math.min(360, workArea.width - 24));
+  const pbxHeight = Math.max(360, Math.min(560, workArea.height - 24));
   pbxWindow = new BrowserWindow({
     width: pbxWidth,
     height: pbxHeight,
-    minWidth: 360,
-    minHeight: 520,
+    minWidth: Math.min(320, pbxWidth),
+    minHeight: Math.min(440, pbxHeight),
     title: 'BNY PBX Phone',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     autoHideMenuBar: true,
@@ -182,6 +248,14 @@ function assertPbxFrame(event) {
   if (!isCrm) throw new Error('Untrusted PBX caller.');
 }
 
+function assertMainCrmFrame(event) {
+  let frameOrigin = '';
+  try { frameOrigin = new URL(event.senderFrame.url).origin; } catch {}
+  if (!window || window.isDestroyed() || event.senderFrame !== window.webContents.mainFrame || !isTrustedOrigin(frameOrigin)) {
+    throw new Error('Untrusted CRM caller.');
+  }
+}
+
 function pbxAccountPath() {
   return path.join(app.getPath('userData'), 'pbx-account.json');
 }
@@ -292,7 +366,7 @@ function sendPbxCommand(command) {
   return { ok: true };
 }
 
-async function startPbxEngine() {
+async function startPbxEngineOnce() {
   if (pbxEngine && !pbxEngine.killed) return { started: true };
   const config = await readPbxAccount();
   if (!config?.password) throw new Error('Save the SIP account and password first.');
@@ -331,6 +405,13 @@ async function startPbxEngine() {
   config.password = '';
   child.stdin.write(initial, () => initial.fill(0));
   return { started: true };
+}
+
+function startPbxEngine() {
+  if (pbxEngine && !pbxEngine.killed) return Promise.resolve({ started: true });
+  if (pbxStartPromise) return pbxStartPromise;
+  pbxStartPromise = startPbxEngineOnce().finally(() => { pbxStartPromise = null; });
+  return pbxStartPromise;
 }
 
 function stopPbxEngine() {
@@ -441,6 +522,11 @@ else {
   ensureWorker();
 
   app.whenReady().then(() => {
+    ipcMain.handle('window:telecaller-mode', (event, compact) => {
+      assertMainCrmFrame(event);
+      if (typeof compact !== 'boolean') throw new Error('Invalid telecaller window mode.');
+      return setTelecallerWindowMode(compact);
+    });
     ipcMain.handle('pbx:get-config', async event => {
       assertPbxFrame(event);
       const config = await readPbxAccount();
@@ -498,15 +584,20 @@ else {
 
     // Responsive screen size calculation adapting to any monitor (1366x768, 1080p, 2K/4K)
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-    const initialWidth = Math.min(1440, Math.max(1024, Math.round(screenWidth * 0.92)));
-    const initialHeight = Math.min(960, Math.max(660, Math.round(screenHeight * 0.90)));
+    const { width: workAreaWidth, height: workAreaHeight } = primaryDisplay.workAreaSize;
+    const availableWidth = Math.max(320, workAreaWidth - 32);
+    const availableHeight = Math.max(320, workAreaHeight - 32);
+    const minWidth = Math.min(720, availableWidth);
+    const minHeight = Math.min(500, availableHeight);
+    mainWindowNormalMinSize = { width: minWidth, height: minHeight };
+    const initialWidth = Math.min(1120, Math.max(minWidth, Math.round(availableWidth * 0.78)));
+    const initialHeight = Math.min(760, Math.max(minHeight, Math.round(availableHeight * 0.8)));
 
     window = new BrowserWindow({
       width: initialWidth,
       height: initialHeight,
-      minWidth: 980,
-      minHeight: 620,
+      minWidth,
+      minHeight,
       center: true,
       autoHideMenuBar: true, // Clean modern window frame (press Alt to access menu)
       title: 'BNY CRM',
@@ -519,6 +610,16 @@ else {
         nodeIntegration: false,
         sandbox: true,
         webSecurity: true
+      }
+    });
+
+    window.on('unmaximize', () => {
+      if (compactOnRestore && telecallerWindowMode) {
+        compactOnRestore = false;
+        applyTelecallerCompactBounds();
+      } else if (normalOnRestore && !telecallerWindowMode) {
+        normalOnRestore = false;
+        restoreTelecallerNormalBounds();
       }
     });
 
