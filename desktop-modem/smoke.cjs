@@ -1,4 +1,4 @@
-const { spawn } = require('node:child_process');
+const { spawn, execSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const dgram = require('node:dgram');
 const fs = require('node:fs');
@@ -6,8 +6,12 @@ const os = require('node:os');
 const path = require('node:path');
 const outputDir = path.resolve(process.env.BNY_CRM_SMOKE_OUTPUT || path.join(__dirname,'release'));
 const exe = path.join(outputDir,'win-unpacked','BNY CRM.exe');
+// Kill any stale instance holding the Electron single-instance lock before starting.
+try { execSync('taskkill /F /IM "BNY CRM.exe" 2>nul', { shell: 'cmd.exe', timeout: 5000 }); } catch {}
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bnycrm-smoke-'));
-const child = spawn(exe,[`--user-data-dir=${profileDir}`,'--remote-debugging-port=9337','--remote-debugging-address=127.0.0.1'],{windowsHide:true,stdio:'ignore'});
+const childEnv = { ...process.env };
+delete childEnv.ELECTRON_RUN_AS_NODE;
+const child = spawn(exe, ['--user-data-dir=' + profileDir, '--remote-debugging-port=9337', '--remote-debugging-address=127.0.0.1'], { windowsHide: true, stdio: 'ignore', env: childEnv });
 let ws, sipSocket;
 let registerCount = 0;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

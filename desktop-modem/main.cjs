@@ -3,6 +3,16 @@ const { fork, spawn, exec } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const crypto = require('node:crypto');
+
+// Enable remote debugging for smoke tests / CI (set BNY_REMOTE_DEBUG_PORT=<port>).
+// Must run before app is ready and before requestSingleInstanceLock().
+const _debugPort = parseInt(process.env.BNY_REMOTE_DEBUG_PORT || '0', 10);
+if (_debugPort > 0 && _debugPort < 65536) {
+  app.commandLine.appendSwitch('remote-debugging-port', String(_debugPort));
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+  app.commandLine.appendSwitch('remote-allow-origins', '*');
+}
+
 let autoUpdater = null;
 try {
   autoUpdater = require('electron-updater').autoUpdater;
