@@ -278,8 +278,13 @@ router.get('/daily-stats', auth, async (req, res) => {
         statsMap[uid] = {
           userId: uid,
           totalCalls: 0,
+          dialedCalls: 0,
+          attendedCalls: 0,
           inboundCount: 0,
           outboundCount: 0,
+          inboundAttended: 0,
+          outboundAttended: 0,
+          missedCount: 0,
           totalDuration: 0,
           avgDuration: 0
         };
@@ -287,12 +292,30 @@ router.get('/daily-stats', auth, async (req, res) => {
 
       statsMap[uid].totalCalls += 1;
       const dir = String(log.direction || 'outbound').toLowerCase();
+      const dur = Number(log.duration) || 0;
+      const status = String(log.status || '').toLowerCase();
+      const isAttended = dur > 0 || status === 'completed' || status === 'in-progress';
+
       if (dir === 'inbound') {
         statsMap[uid].inboundCount += 1;
+        if (isAttended) {
+          statsMap[uid].inboundAttended += 1;
+          statsMap[uid].attendedCalls += 1;
+        } else {
+          statsMap[uid].missedCount += 1;
+        }
       } else {
+        // Outbound calls are dialed calls
         statsMap[uid].outboundCount += 1;
+        statsMap[uid].dialedCalls += 1;
+        if (isAttended) {
+          statsMap[uid].outboundAttended += 1;
+          statsMap[uid].attendedCalls += 1;
+        } else {
+          statsMap[uid].missedCount += 1;
+        }
       }
-      statsMap[uid].totalDuration += (Number(log.duration) || 0);
+      statsMap[uid].totalDuration += dur;
     }
 
     // Calculate avgDuration
