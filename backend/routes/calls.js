@@ -208,6 +208,90 @@ router.get('/history-export', auth, async (req, res) => {
   }
 });
 
+// GET /api/calls/check-number - Check if a phone number was already dialed by any telecaller
+router.get('/check-number', auth, async (req, res) => {
+  try {
+    const rawPhone = String(req.query.phone || '').trim();
+    const cleanDigits = rawPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 5) {
+      return res.json({ hasBeenDialed: false });
+    }
+
+    const searchNumber = cleanDigits.slice(-10);
+    const endAnchor = String.fromCharCode(36);
+    const regex = new RegExp(searchNumber + endAnchor);
+
+    // Search outbound call logs for this number
+    const logs = await CallLog.find({
+      phoneNumber: { $regex: regex }
+    })
+      .populate('userId', 'username name sipExtension userGroup')
+      .sort({ callTime: -1 })
+      .limit(5)
+      .lean();
+
+    if (!logs || logs.length === 0) {
+      return res.json({ hasBeenDialed: false, phone: rawPhone });
+    }
+
+    const last = logs[0];
+    const callerUser = last.userId || {};
+    const callerName = callerUser.username || callerUser.name || 'Telecaller';
+
+    // Format human-readable date & time in IST
+    const callDate = new Date(last.callTime);
+    const formattedDate = callDate.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    const formattedTime = callDate.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const isCurrentUser = String(callerUser._id || callerUser.id || '') === String(req.user._id);
+
+    res.json({
+      hasBeenDialed: true,
+      phone: rawPhone,
+      totalCalls: logs.length,
+      lastCall: {
+        id: last._id,
+        callTime: last.callTime,
+        day: formattedDate,
+        time: formattedTime,
+        callerId: callerUser._id,
+        callerName,
+        callerExtension: callerUser.sipExtension || '',
+        isCurrentUser,
+        duration: last.duration || 0,
+        direction: last.direction || 'outbound',
+        status: last.status || 'unknown',
+        personName: last.personName || '',
+        companyName: last.companyName || ''
+      },
+      history: logs.map(l => {
+        const d = new Date(l.callTime);
+        return {
+          id: l._id,
+          callTime: l.callTime,
+          day: d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' }),
+          time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          callerName: l.userId?.username || l.userId?.name || 'Telecaller',
+          duration: l.duration || 0,
+          status: l.status || 'unknown'
+        };
+      })
+    });
+  } catch (err) {
+    console.error('Error checking dialed number:', err);
+    res.status(500).json({ error: 'Failed to check number status' });
+  }
+});
+
 // GET /api/calls - Get all call logs, or filter by telecaller, phone, date
 router.get('/', auth, async (req, res) => {
   try {
@@ -249,6 +333,9 @@ router.get('/', auth, async (req, res) => {
 // GET /api/calls/daily-stats - Get aggregated daily stats for monitoring dashboard
 router.get('/daily-stats', auth, async (req, res) => {
   try {
+    const range = String(req.query.range || 'today').toLowerCase();
+    const specificDate = req.query.date;
+
     // Calculate start of day in Indian Standard Time (UTC+5:30)
     const now = new Date();
     const istOffsetMs = 330 * 60 * 1000; // 5.5 hours in ms
@@ -260,9 +347,32 @@ router.get('/daily-stats', auth, async (req, res) => {
       0, 0, 0, 0
     ) - istOffsetMs);
 
-    // Fetch today's calls and deduplicate with the exact same algorithm as history-export
+    let queryTime = { $gte: startOfIstDayInUtc };
+
+    if (specificDate && /^\d{4}-\d{2}-\d{2}$/.test(specificDate)) {
+      const [y, m, d] = specificDate.split('-').map(Number);
+      const startOfDay = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0) - istOffsetMs);
+      const endOfDay = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999) - istOffsetMs);
+      queryTime = { $gte: startOfDay, $lte: endOfDay };
+    } else if (range === 'yesterday') {
+      const startOfYesterday = new Date(startOfIstDayInUtc.getTime() - 24 * 60 * 60 * 1000);
+      queryTime = { $gte: startOfYesterday, $lt: startOfIstDayInUtc };
+    } else if (range === '7days') {
+      const sevenDaysAgo = new Date(startOfIstDayInUtc.getTime() - 6 * 24 * 60 * 60 * 1000);
+      queryTime = { $gte: sevenDaysAgo };
+    } else if (range === 'month') {
+      const startOfMonth = new Date(Date.UTC(
+        istDate.getUTCFullYear(),
+        istDate.getUTCMonth(),
+        1,
+        0, 0, 0, 0
+      ) - istOffsetMs);
+      queryTime = { $gte: startOfMonth };
+    }
+
+    // Fetch calls within range and deduplicate with the exact same algorithm as history-export
     const rawTodayLogs = await CallLog.find({
-      callTime: { $gte: startOfIstDayInUtc },
+      callTime: queryTime,
       userId: { $ne: null }
     }).lean();
 
@@ -286,7 +396,8 @@ router.get('/daily-stats', auth, async (req, res) => {
           outboundAttended: 0,
           missedCount: 0,
           totalDuration: 0,
-          avgDuration: 0
+          avgDuration: 0,
+          lastCallTime: null
         };
       }
 
@@ -295,6 +406,13 @@ router.get('/daily-stats', auth, async (req, res) => {
       const dur = Number(log.duration) || 0;
       const status = String(log.status || '').toLowerCase();
       const isAttended = dur > 0 || status === 'completed' || status === 'in-progress';
+
+      if (log.callTime) {
+        const cTime = new Date(log.callTime).getTime();
+        if (!statsMap[uid].lastCallTime || cTime > new Date(statsMap[uid].lastCallTime).getTime()) {
+          statsMap[uid].lastCallTime = log.callTime;
+        }
+      }
 
       if (dir === 'inbound') {
         statsMap[uid].inboundCount += 1;
